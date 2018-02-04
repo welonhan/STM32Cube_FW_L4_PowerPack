@@ -48,16 +48,29 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l4xx_hal.h"
 
-
+	 /**
+  * @brief STM32L4XX NUCLEO BSP Driver version number V1.0.0
+  */
+#define __STM32L4XX_NUCLEO_32_BSP_VERSION_MAIN   (0x01) /*!< [31:24] main version */
+#define __STM32L4XX_NUCLEO_32_BSP_VERSION_SUB1   (0x00) /*!< [23:16] sub1 version */
+#define __STM32L4XX_NUCLEO_32_BSP_VERSION_SUB2   (0x00) /*!< [15:8]  sub2 version */
+#define __STM32L4XX_NUCLEO_32_BSP_VERSION_RC     (0x00) /*!< [7:0]  release candidate */
+#define __STM32L4XX_NUCLEO_32_BSP_VERSION        ((__STM32L4XX_NUCLEO_32_BSP_VERSION_MAIN << 24)\
+                                                 |(__STM32L4XX_NUCLEO_32_BSP_VERSION_SUB1 << 16)\
+                                                 |(__STM32L4XX_NUCLEO_32_BSP_VERSION_SUB2 << 8 )\
+                                                 |(__STM32L4XX_NUCLEO_32_BSP_VERSION_RC))
+ 
+ /*##################### GPIO MAP ###################################*/
+	 
  /*##################### PA ###################################*/
- #define USB_IN_ADCx_CHANNEL_PIN             GPIO_PIN_0			//ADC1_IN5
- #define DC_IN_ADCx_CHANNEL_PIN              GPIO_PIN_1			//ADC1_IN6
- #define CHG_OUT_ADCx_CHANNEL_PIN            GPIO_PIN_2			//ADC1_IN7
+ #define USB_IN_ADC1_CHANNEL_PIN             GPIO_PIN_0			//ADC1_IN5
+ #define DC_IN_ADC1_CHANNEL_PIN              GPIO_PIN_1			//ADC1_IN6
+ #define CHG_OUT_ADC1_CHANNEL_PIN            GPIO_PIN_2			//ADC1_IN7
  #define PMUX2_CHA_EN_PIN                  	 GPIO_PIN_3
  #define PMUX1_CTRL_PIN                      GPIO_PIN_4
  #define PMUX1_MODE_PIN                      GPIO_PIN_5
  #define SMUX_SEL_PIN                        GPIO_PIN_6
- #define BOOST_ENABEL_PIN                    GPIO_PIN_7
+ #define BOOST_ENABLE_PIN                    GPIO_PIN_7
  #define BOOST_9V_EN_PIN                     GPIO_PIN_8
  #define SMB_SUSP_PIN                        GPIO_PIN_9
  #define SMB_RESET_PIN                       GPIO_PIN_10
@@ -67,15 +80,15 @@
  //#define LED1_PIN                          GPIO_PIN_14
  #define LED2_PIN                            GPIO_PIN_15
 
-#define PMUX2_CHA_EN_PIN_GPIO_PORT            GPIOA
-#define PMUX1_CTRL_PIN_GPIO_PORT          		GPIOA
-#define PMUX1_MODE_PIN_GPIO_PORT              GPIOA
-#define SMUX_SEL_PIN_GPIO_PORT              	GPIOA
-#define BOOST_ENABEL_PIN_GPIO_PORT            GPIOA
-#define BOOST_9V_EN_PIN_GPIO_PORT          		GPIOA
-#define SMB_SUSP_PIN_GPIO_PORT              	GPIOA
-#define SMB_RESET_PIN_GPIO_PORT              	GPIOA
-#define SMB_LPMODE_EN_PIN_GPIO_PORT           GPIOA
+ #define PMUX2_CHA_EN_PIN_GPIO_PORT           GPIOA
+ #define PMUX1_CTRL_PIN_GPIO_PORT          		GPIOA
+ #define PMUX1_MODE_PIN_GPIO_PORT             GPIOA
+ #define SMUX_SEL_PIN_GPIO_PORT              	GPIOA
+ #define BOOST_ENABLE_PIN_GPIO_PORT           GPIOA
+ #define BOOST_9V_EN_PIN_GPIO_PORT         		GPIOA
+ #define SMB_SUSP_PIN_GPIO_PORT              	GPIOA
+ #define SMB_RESET_PIN_GPIO_PORT             	GPIOA
+ #define SMB_LPMODE_EN_PIN_GPIO_PORT          GPIOA
 
 
  /*##################### PB ###################################*/
@@ -89,17 +102,22 @@
  #define BSP_I2C1_SDA_PIN                	  GPIO_PIN_7
  #define PMUX1_CHA_EN_PIN                   GPIO_PIN_8
  #define PMUX1_CHB_EN_PIN                   GPIO_PIN_9
- #define ACC_UART3_TX_PIN                   GPIO_PIN_10
- #define ACC_UART3_RX_PIN                   GPIO_PIN_11
+ #define BSP_UART3_TX_PIN                   GPIO_PIN_10
+ #define BSP_UART3_RX_PIN                   GPIO_PIN_11
  #define FG_INT_PIN                       	GPIO_PIN_12
  #define BSP_I2C2_SCL_PIN                	  GPIO_PIN_13
  #define BSP_I2C2_SDA_PIN                	  GPIO_PIN_14
  #define LED3_PIN                           GPIO_PIN_15
-
-#define PMUX2_CHB_EN_PIN_GPIO_PORT          GPIOB
-#define PMUX1_CHA_EN_PIN_GPIO_PORT          GPIOB
-#define PMUX1_CHB_EN_PIN_GPIO_PORT          GPIOB
-
+ 
+ #define SMB_CC_STS_PIN_GPIO_PORT          	GPIOB
+ #define SMB_STAT_PIN_GPIO_PORT          		GPIOB
+ #define SMB_SYS_PIN_GPIO_PORT          		GPIOB
+ #define BOOST_OCP_INT_PIN_GPIO_PORT        GPIOB
+ #define KEY_PIN_GPIO_PORT          				GPIOB
+ #define PMUX2_CHB_EN_PIN_GPIO_PORT         GPIOB
+ #define PMUX1_CHA_EN_PIN_GPIO_PORT         GPIOB
+ #define PMUX1_CHB_EN_PIN_GPIO_PORT         GPIOB
+ #define FG_INT_PIN_PIN_GPIO_PORT           GPIOB
 
  /*##################### PC ###################################*/
  //#define SMB_CC_STS_PIN                    GPIO_PIN_0
@@ -119,9 +137,9 @@
  #define WLC_INT_PIN                		     GPIO_PIN_14
  #define WLC_EN_PIN                          GPIO_PIN_15
 
-
+ #define PHONE_ATTACHED_PIN_GPIO_PORT    		 GPIOC
  #define WLC_EN_PIN_GPIO_PORT          			 GPIOC
-
+ #define WLC_INT_PIN_GPIO_PORT          		 GPIOC
  /*##################### PH ###################################*/
  #define CHG_PATH_EN_PIN                     GPIO_PIN_0
  //#define SMB_STAT_PIN                      GPIO_PIN_1
@@ -192,30 +210,30 @@
 
  /*##################### USART3 ###################################*/
  /* communicate with phone */
- #define ACC_UART3                           USART3
- #define ACC_UART3_CLK_ENABLE()              __HAL_RCC_USART3_CLK_ENABLE()
- #define ACC_UART3_RX_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
- #define ACC_UART3_TX_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
-
- #define ACC_UART3_FORCE_RESET()             __HAL_RCC_USART3_FORCE_RESET()
- #define ACC_UART3_RELEASE_RESET()           __HAL_RCC_USART3_RELEASE_RESET()
+ #define BSP_UART3                           USART3
+ #define BSP_UART3_CLK_ENABLE()              __HAL_RCC_USART3_CLK_ENABLE()
+ #define BSP_UART3_RX_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
+ #define BSP_UART3_TX_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
+ #define BSP_UART3_FORCE_RESET()             __HAL_RCC_USART3_FORCE_RESET()
+ #define BSP_UART3_RELEASE_RESET()           __HAL_RCC_USART3_RELEASE_RESET()
 
  /* Definition for ACC_UART3 Pins */
  
- #define ACC_UART3_TX_GPIO_PORT              GPIOB
- #define ACC_UART3_TX_AF                     GPIO_AF7_USART3 
- #define ACC_UART3_RX_GPIO_PORT              GPIOB
- #define ACC_UART3_RX_AF                     GPIO_AF7_USART3
+ #define BSP_UART3_TX_GPIO_PORT              GPIOB
+ #define BSP_UART3_TX_AF                     GPIO_AF7_USART3 
+ #define BSP_UART3_RX_GPIO_PORT              GPIOB
+ #define BSP_UART3_RX_AF                     GPIO_AF7_USART3
 
- /* Definition for ACC_UART3's NVIC */
- #define ACC_UART3_IRQn                      USART3_IRQn
- #define ACC_UART3_IRQHandler                USART3_IRQHandler
+ /* Definition for BSP_UART3's NVIC */
+ #define BSP_UART3_IRQn                      USART3_IRQn
+ #define BSP_UART3_IRQHandler                USART3_IRQHandler
 
  /* Size of Trasmission buffer */
  #define TXBUFFERSIZE                      (COUNTOF(aTxBuffer) - 1)
  /* Size of Reception buffer */
  #define RXBUFFERSIZE                      TXBUFFERSIZE
 
+/*##################### LED ###################################*/
  typedef enum
  {
    LED1 = 0,
@@ -227,109 +245,160 @@
 
  #define LEDn                               4
 
+ #define LED1_GPIO_PORT                     GPIOA
+ #define LED1_GPIO_CLK_ENABLE()             __HAL_RCC_GPIOA_CLK_ENABLE()
+ #define LED1_GPIO_CLK_DISABLE()            __HAL_RCC_GPIOA_CLK_DISABLE()
 
-#define LED1_GPIO_PORT                     GPIOA
-#define LED1_GPIO_CLK_ENABLE()             __HAL_RCC_GPIOA_CLK_ENABLE()
-#define LED1_GPIO_CLK_DISABLE()            __HAL_RCC_GPIOA_CLK_DISABLE()
+ #define LED2_GPIO_PORT                     GPIOA
+ #define LED2_GPIO_CLK_ENABLE()             __HAL_RCC_GPIOA_CLK_ENABLE()
+ #define LED2_GPIO_CLK_DISABLE()            __HAL_RCC_GPIOA_CLK_DISABLE()
 
-#define LED2_GPIO_PORT                     GPIOA
-#define LED2_GPIO_CLK_ENABLE()             __HAL_RCC_GPIOA_CLK_ENABLE()
-#define LED2_GPIO_CLK_DISABLE()            __HAL_RCC_GPIOA_CLK_DISABLE()
+ #define LED3_GPIO_PORT                     GPIOB
+ #define LED3_GPIO_CLK_ENABLE()             __HAL_RCC_GPIOB_CLK_ENABLE()  
+ #define LED3_GPIO_CLK_DISABLE()            __HAL_RCC_GPIOB_CLK_DISABLE()  
 
-#define LED3_GPIO_PORT                     GPIOB
-#define LED3_GPIO_CLK_ENABLE()             __HAL_RCC_GPIOB_CLK_ENABLE()  
-#define LED3_GPIO_CLK_DISABLE()            __HAL_RCC_GPIOB_CLK_DISABLE()  
+ #define LED4_GPIO_PORT                     GPIOC
+ #define LED4_GPIO_CLK_ENABLE()             __HAL_RCC_GPIOC_CLK_ENABLE()
+ #define LED4_GPIO_CLK_DISABLE()            __HAL_RCC_GPIOC_CLK_DISABLE()
 
-#define LED4_GPIO_PORT                     GPIOC
-#define LED4_GPIO_CLK_ENABLE()             __HAL_RCC_GPIOC_CLK_ENABLE()
-#define LED4_GPIO_CLK_DISABLE()            __HAL_RCC_GPIOC_CLK_DISABLE()
+ #define LEDx_GPIO_CLK_ENABLE()    do {LED1_GPIO_CLK_ENABLE(); LED2_GPIO_CLK_ENABLE();LED3_GPIO_CLK_ENABLE();LED4_GPIO_CLK_ENABLE();} while(0)
+ #define LEDx_GPIO_CLK_DISABLE()   do {LED1_GPIO_CLK_DISABLE();LED2_GPIO_CLK_DISABLE();LED3_GPIO_CLK_DISABLE();LED4_GPIO_CLK_DISABLE();)while(0)
 
-#define LEDx_GPIO_CLK_ENABLE()    do {LED1_GPIO_CLK_ENABLE(); LED2_GPIO_CLK_ENABLE();LED3_GPIO_CLK_ENABLE();LED4_GPIO_CLK_ENABLE();} while(0)
-#define LEDx_GPIO_CLK_DISABLE()   do {LED1_GPIO_CLK_DISABLE();LED2_GPIO_CLK_DISABLE();LED3_GPIO_CLK_DISABLE();LED4_GPIO_CLK_DISABLE();)while(0)
+ /*##################### OUTPUT GPIO ###################################*/
 
+ /*##################### PA ###################################*/
+ 
+ #define PMUX2_CHA_EN_PIN_CLK_ENABLE()       __HAL_RCC_GPIOA_CLK_ENABLE()
+ #define PMUX2_CHA_EN_PIN_CLK_DISABLE()      __HAL_RCC_GPIOA_CLK_DISABLE() 
+ 
+ 
+ #define PMUX1_CTRL_PIN_CLK_ENABLE()         __HAL_RCC_GPIOA_CLK_ENABLE()
+ #define PMUX1_CTRL_PIN_CLK_DISABLE()        __HAL_RCC_GPIOA_CLK_DISABLE()
+  
+ 
+ #define PMUX1_MODE_PIN_CLK_ENABLE()         __HAL_RCC_GPIOA_CLK_ENABLE()
+ #define PMUX1_MODE_PIN_CLK_DISABLE()        __HAL_RCC_GPIOA_CLK_DISABLE() 
 
-#define OUTPUT_GPIOA_PORT                     GPIOA
-#define OUTPUT_GPIOA_CLK_ENABLE()             __HAL_RCC_GPIOA_CLK_ENABLE()
-#define OUTPUT_GPIOA_CLK_DISABLE()            __HAL_RCC_GPIOA_CLK_DISABLE()
+ 
+ #define SMUX_SEL_PIN_CLK_ENABLE()           __HAL_RCC_GPIOA_CLK_ENABLE()
+ #define SMUX_SEL_PIN_CLK_DISABLE()          __HAL_RCC_GPIOA_CLK_DISABLE()
+ 
+ 
+ #define BOOST_ENABLE_PIN_CLK_ENABLE()       __HAL_RCC_GPIOA_CLK_ENABLE()
+ #define BOOST_ENABLE_PIN_CLK_DISABLE()      __HAL_RCC_GPIOA_CLK_DISABLE()
+ 
+ 
+ #define BOOST_9V_EN_PIN_CLK_ENABLE()        __HAL_RCC_GPIOA_CLK_ENABLE()
+ #define BOOST_9V_EN_PIN_CLK_DISABLE()       __HAL_RCC_GPIOA_CLK_DISABLE()
+ 
+ 
+ #define SMB_SUSP_PIN_CLK_ENABLE()           __HAL_RCC_GPIOA_CLK_ENABLE()
+ #define SMB_SUSP_PIN_CLK_DISABLE()          __HAL_RCC_GPIOA_CLK_DISABLE()
+ 
+ 
+ #define SMB_RESET_PIN_CLK_ENABLE()          __HAL_RCC_GPIOA_CLK_ENABLE()
+ #define SMB_RESET_PIN_CLK_DISABLE()         __HAL_RCC_GPIOA_CLK_DISABLE()
+ 
+ 
+ #define SMB_LPMODE_PIN_CLK_ENABLE()         __HAL_RCC_GPIOA_CLK_ENABLE()
+ #define SMB_LPMODE_PIN_CLK_DISABLE()        __HAL_RCC_GPIOA_CLK_DISABLE()
+ 
+  /*##################### PB ###################################*/ 
+ 
+ #define PMUX2_CHB_EN_PIN_CLK_ENABLE()         __HAL_RCC_GPIOB_CLK_ENABLE()
+ #define PMUX2_CHB_EN_PIN_CLK_DISABLE()        __HAL_RCC_GPIOB_CLK_DISABLE() 
+ 
+ 
+ #define PMUX1_CHA_EN_PIN_CLK_ENABLE()         __HAL_RCC_GPIOB_CLK_ENABLE()
+ #define PMUX1_CHA_EN_PIN_CLK_DISABLE()        __HAL_RCC_GPIOB_CLK_DISABLE() 
+ 
+ 
+ #define PMUX1_CHB_EN_PIN_CLK_ENABLE()         __HAL_RCC_GPIOB_CLK_ENABLE()
+ #define PMUX1_CHB_EN_PIN_CLK_DISABLE()        __HAL_RCC_GPIOB_CLK_DISABLE()
+ /*##################### PC ###################################*/
+ 
+ #define WLC_EN_PIN_CLK_ENABLE()         				__HAL_RCC_GPIOC_CLK_ENABLE()
+ #define WLC_EN_PIN_CLK_DISABLE()        				__HAL_RCC_GPIOC_CLK_DISABLE() 
+ /*##################### PH ###################################*/
+ 
+ #define CHG_PATH_EN_PIN_CLK_ENABLE()         	__HAL_RCC_GPIOH_CLK_ENABLE()
+ #define CHG_PATH_EN_PIN_CLK_DISABLE()        	__HAL_RCC_GPIOH_CLK_DISABLE()
+ 
 
-#define OUTPUT_GPIOB_PORT                     GPIOB
-#define OUTPUT_GPIOB_CLK_ENABLE()             __HAL_RCC_GPIOB_CLK_ENABLE()
-#define OUTPUT_GPIOB_CLK_DISABLE()            __HAL_RCC_GPIOB_CLK_DISABLE()
+ /*##################### INPUT GPIO ###################################*/
+ #define SMB_CC_STS_PIN_CLK_ENABLE()           	__HAL_RCC_GPIOB_CLK_ENABLE()
+ #define SMB_CC_STS_PIN_CLK_DISABLE()           __HAL_RCC_GPIOB_CLK_DISABLE()
 
-#define OUTPUT_GPIOC_PORT                     GPIOC
-#define OUTPUT_GPIOC_CLK_ENABLE()             __HAL_RCC_GPIOC_CLK_ENABLE()
-#define OUTPUT_GPIOC_CLK_DISABLE()            __HAL_RCC_GPIOC_CLK_DISABLE()
+ #define SMB_STAT_PIN_CLK_ENABLE()             	__HAL_RCC_GPIOB_CLK_ENABLE()
+ #define SMB_STAT_PIN_CLK_DISABLE()            	__HAL_RCC_GPIOB_CLK_DISABLE()
+ 
+ #define SMB_SYS_PIN_CLK_ENABLE()             	__HAL_RCC_GPIOB_CLK_ENABLE()
+ #define SMB_SYS_PIN_CLK_DISABLE()            	__HAL_RCC_GPIOB_CLK_DISABLE()
+ 
+ #define BOOST_OCP_INT_PIN_CLK_ENABLE()         __HAL_RCC_GPIOB_CLK_ENABLE()
+ #define BOOST_OCP_INT_PIN_CLK_DISABLE()        __HAL_RCC_GPIOB_CLK_DISABLE()
+ 
+ #define KEY_PIN_CLK_ENABLE()             			__HAL_RCC_GPIOB_CLK_ENABLE()
+ #define KEY_PIN_CLK_DISABLE()            			__HAL_RCC_GPIOB_CLK_DISABLE()	 
+	 
+ #define FG_INT_PIN_CLK_ENABLE()             		__HAL_RCC_GPIOB_CLK_ENABLE()
+ #define FG_INT_PIN_CLK_DISABLE()            		__HAL_RCC_GPIOB_CLK_DISABLE()	 
 
-#define OUTPUT_GPIOH_PORT                     GPIOH
-#define OUTPUT_GPIOH_CLK_ENABLE()             __HAL_RCC_GPIOH_CLK_ENABLE()
-#define OUTPUT_GPIOH_CLK_DISABLE()            __HAL_RCC_GPIOH_CLK_DISABLE()
-
-/**
-  * @brief STM32L4XX NUCLEO BSP Driver version number V1.0.0
-  */
-#define __STM32L4XX_NUCLEO_32_BSP_VERSION_MAIN   (0x01) /*!< [31:24] main version */
-#define __STM32L4XX_NUCLEO_32_BSP_VERSION_SUB1   (0x00) /*!< [23:16] sub1 version */
-#define __STM32L4XX_NUCLEO_32_BSP_VERSION_SUB2   (0x00) /*!< [15:8]  sub2 version */
-#define __STM32L4XX_NUCLEO_32_BSP_VERSION_RC     (0x00) /*!< [7:0]  release candidate */
-#define __STM32L4XX_NUCLEO_32_BSP_VERSION        ((__STM32L4XX_NUCLEO_32_BSP_VERSION_MAIN << 24)\
-                                                 |(__STM32L4XX_NUCLEO_32_BSP_VERSION_SUB1 << 16)\
-                                                 |(__STM32L4XX_NUCLEO_32_BSP_VERSION_SUB2 << 8 )\
-                                                 |(__STM32L4XX_NUCLEO_32_BSP_VERSION_RC))
-
+ #define WLC_INT_PIN_CLK_ENABLE()             	__HAL_RCC_GPIOC_CLK_ENABLE()
+ #define WLC_INT_PIN_CLK_DISABLE()            	__HAL_RCC_GPIOC_CLK_DISABLE()	 
+	
+ #define PHONE_ATTACHED_PIN_CLK_ENABLE()      	__HAL_RCC_GPIOC_CLK_ENABLE()
+ #define PHONE_ATTACHED_PIN_CLK_DISABLE()     	__HAL_RCC_GPIOC_CLK_DISABLE()
+	 
+/*##################### ADC ###################################*/
 /* Definition for ADCx clock resources */
-#define ADCx                            ADC1
-#define ADCx_CLK_ENABLE()               __HAL_RCC_ADC_CLK_ENABLE()
-#define ADCx_CHANNEL_GPIO_CLK_ENABLE()  __HAL_RCC_GPIOA_CLK_ENABLE()
+#define BSP_ADC1                            ADC1
+#define BSP_ADC1_CLK_ENABLE()               __HAL_RCC_ADC_CLK_ENABLE()
+#define BSP_ADC1_CHANNEL_GPIO_CLK_ENABLE()  __HAL_RCC_GPIOA_CLK_ENABLE()
 
-#define DMAx_CHANNELx_CLK_ENABLE()      __HAL_RCC_DMA1_CLK_ENABLE()
+#define DMAx_CHANNELx_CLK_ENABLE()      		__HAL_RCC_DMA1_CLK_ENABLE()
 
-#define ADCx_FORCE_RESET()              __HAL_RCC_ADC_FORCE_RESET()
-#define ADCx_RELEASE_RESET()            __HAL_RCC_ADC_RELEASE_RESET()
+#define BSP_ADC1_FORCE_RESET()              __HAL_RCC_ADC_FORCE_RESET()
+#define BSP_ADC1_RELEASE_RESET()            __HAL_RCC_ADC_RELEASE_RESET()
 
-/* Definition for ADCx Channel Pin */
-#define ADCx_CHANNEL_PIN_CLK_ENABLE()   __HAL_RCC_GPIOA_CLK_ENABLE()
+/* Definition for BSP_ADC1 Channel Pin */
+#define BSP_ADC1_CHANNEL_PIN_CLK_ENABLE()   __HAL_RCC_GPIOA_CLK_ENABLE()
+#define BSP_ADC1_CHANNEL_GPIO_PORT          GPIOA
 
+/* Definition for BSP_ADC1's Channel */
+#define USB_IN_ADC1_CHANNEL             ADC_CHANNEL_5
+#define DC_IN_ADC1_CHANNEL              ADC_CHANNEL_6
+#define CHG_OUT_ADC1_CHANNEL            ADC_CHANNEL_7
 
-#define ADCx_CHANNEL_GPIO_PORT          GPIOA
-
-/* Definition for ADCx's Channel */
-#define USB_IN_ADCx_CHANNEL                    	ADC_CHANNEL_5
-#define DC_IN_ADCx_CHANNEL                    	ADC_CHANNEL_6
-#define CHG_OUT_ADCx_CHANNEL                    ADC_CHANNEL_7
-
+/* Definition for charging control GPIO */
 typedef struct
 {
 	GPIO_PinState LPMODE_EN;
 	GPIO_PinState SUSP;
 	GPIO_PinState RST;
 	GPIO_PinState SMUX_SEL;
-}	
-SMB_IO_Ctrl;	 
-	 
+}SMB_IO_Ctrl;	 	 
 
 typedef struct
 {
 	GPIO_PinState MODE;
 	GPIO_PinState CTRL;
-	GPIO_PinState VINA_EN;
-	GPIO_PinState VINB_EN;	
-}	
-PMUX1_IO_Ctrl;
+	GPIO_PinState CHA_EN;
+	GPIO_PinState CHB_EN;	
+}PMUX1_IO_Ctrl;
 
 typedef struct
 {
 	GPIO_PinState MODE;
-	GPIO_PinState VINA_EN;
-	GPIO_PinState VINB_EN;
-}	
-PMUX2_IO_Ctrl;
+	GPIO_PinState CHA_EN;
+	GPIO_PinState CHB_EN;
+}PMUX2_IO_Ctrl;
 
 typedef struct
 {
 	GPIO_PinState ENABLE;
-	GPIO_PinState EN_9V;
-}	
-BOOST_IO_Ctrl;
+	GPIO_PinState B9V_EN;
+}BOOST_IO_Ctrl;
 
 typedef struct
 {
@@ -337,81 +406,99 @@ typedef struct
 	PMUX1_IO_Ctrl PMUX1;
 	PMUX2_IO_Ctrl PMUX2;
 	BOOST_IO_Ctrl BOOST;
-}	
-PB_IO;
+}PB_IO;
 
 
-
-
-
-/**
-  * @}
-  */
-
-
-
-/** @defgroup STM32L4XX_NUCLEO_32_Exported_Functions Exported Functions
+/** @defgroup Power pack_Exported_Functions Exported Functions
   * @{
   */
 
-uint32_t         BSP_GetVersion(void);
-void             BSP_LED_Init(void);
-void             BSP_LED_On(Led_TypeDef Led);
-void             BSP_LED_Off(Led_TypeDef Led);
-void             BSP_LED_Toggle(Led_TypeDef Led);
-void 						 BSP_LED_Light(uint8_t Led);
+/**
+  * @}
+  */ 
+/* Get firmware revision function */
+/* Link function for firmware revision */
+uint32_t         		BSP_GetVersion(void);
+/**
+  * @}
+  */ 
+/* LED function */
+/* Link function for LED */
+void             		BSP_LED_Init(void);
+void             		BSP_LED_On(Led_TypeDef Led);
+void             		BSP_LED_Off(Led_TypeDef Led);
+void             		BSP_LED_Toggle(Led_TypeDef Led);
+void 						 		BSP_LED_Light(uint8_t Led);
 /**
   * @}
   */ 
 /* I2C1 bus function */
 /* Link function for I2C peripherals */
-void               BSP_I2C1_Init(void);
-void               BSP_I2C1_Error (void);
-void               BSP_I2C1_MspInit(I2C_HandleTypeDef *hi2c);
-void 							 BSP_I2C1_Write(uint8_t Addr, uint8_t Reg, uint16_t RegAddSize, uint8_t Value);
-uint8_t 					 BSP_I2C1_Read(uint8_t Addr, uint8_t Reg ,uint16_t RegAddSize);
-HAL_StatusTypeDef  BSP_I2C1_WriteBuffer(uint16_t Addr, uint8_t Reg, uint16_t RegSize, uint8_t *pBuffer, uint16_t Length);
-HAL_StatusTypeDef  BSP_I2C1_ReadBuffer(uint16_t Addr, uint8_t Reg, uint16_t RegSize, uint8_t *pBuffer, uint16_t Length);
-HAL_StatusTypeDef  BSP_I2C1_IsDeviceReady(uint16_t DevAddress, uint32_t Trials);
-
-void               BSP_I2C2_Init(void);
-void               BSP_I2C2_Error (void);
-void               BSP_I2C2_MspInit(I2C_HandleTypeDef *hi2c);
-void 							 BSP_I2C2_Write(uint8_t Addr, uint16_t Reg, uint16_t RegAddSize, uint8_t Value);
-uint8_t 					 BSP_I2C2_Read(uint8_t Addr, uint16_t Reg,uint16_t RegAddSize);
-HAL_StatusTypeDef  BSP_I2C2_WriteBuffer(uint16_t Addr, uint16_t Reg, uint16_t RegSize, uint8_t *pBuffer, uint16_t Length);
-HAL_StatusTypeDef  BSP_I2C2_ReadBuffer(uint16_t Addr, uint16_t Reg, uint16_t RegSize, uint8_t *pBuffer, uint16_t Length);
-HAL_StatusTypeDef  BSP_I2C2_IsDeviceReady(uint16_t DevAddress, uint32_t Trials);
-
-void BSP_POWER_PACK_Init(void);
-void BSP_UART3_Init(void);
-
-static void BSP_SMB_CC_IRQHandler_Config(void);
-static void BSP_SMB_STAT_IRQHandler_Config(void);
-static void BSP_SMB_SYSOK_IRQHandler_Config(void);
-static void BSP_BOOST_OVP_IRQHandler_Config(void);
-static void BSP_KEY_IRQHandler_Config(void);
-static void BSP_EXIT15_10_IRQHandler_Config(void);
-
-void BSP_IO_Config(PB_IO *io_cfg);
-void BSP_IO_DEFAULT(void);
-void BSP_WLC2SMB(void);
-void BSP_USB2SMB(void);
-void BSP_USB2PHONE(void);
-void BSP_WLC2PHONE(void);
-void BSP_BOOST2PHONE(uint8_t enable_9v);
-
+void               	BSP_I2C1_Init(void);
+void               	BSP_I2C1_Error (void);
+void               	BSP_I2C1_MspInit(I2C_HandleTypeDef *hi2c);
+void 							 	BSP_I2C1_Write(uint8_t Addr, uint16_t Reg, uint16_t RegAddSize, uint8_t Value);
+uint8_t 					 	BSP_I2C1_Read(uint8_t Addr, uint16_t Reg ,uint16_t RegAddSize);
+HAL_StatusTypeDef  	BSP_I2C1_WriteBuffer(uint16_t Addr, uint8_t Reg, uint16_t RegSize, uint8_t *pBuffer, uint16_t Length);
+HAL_StatusTypeDef  	BSP_I2C1_ReadBuffer(uint16_t Addr, uint8_t Reg, uint16_t RegSize, uint8_t *pBuffer, uint16_t Length);
+HAL_StatusTypeDef  	BSP_I2C1_IsDeviceReady(uint16_t DevAddress, uint32_t Trials);
 /**
   * @}
-  */
+  */ 
+/* I2C2 bus function */
+/* Link function for I2C peripherals */
+void               	BSP_I2C2_Init(void);
+void               	BSP_I2C2_Error (void);
+void               	BSP_I2C2_MspInit(I2C_HandleTypeDef *hi2c);
+void 							 	BSP_I2C2_Write(uint8_t Addr, uint16_t Reg, uint16_t RegAddSize, uint8_t Value);
+uint8_t 					 	BSP_I2C2_Read(uint8_t Addr, uint16_t Reg,uint16_t RegAddSize);
+HAL_StatusTypeDef  	BSP_I2C2_WriteBuffer(uint16_t Addr, uint16_t Reg, uint16_t RegSize, uint8_t *pBuffer, uint16_t Length);
+HAL_StatusTypeDef  	BSP_I2C2_ReadBuffer(uint16_t Addr, uint16_t Reg, uint16_t RegSize, uint8_t *pBuffer, uint16_t Length);
+HAL_StatusTypeDef  	BSP_I2C2_IsDeviceReady(uint16_t DevAddress, uint32_t Trials);
+/**
+  * @}
+  */ 
+/* UART3 bus function */
+/* Link function for UART peripherals */
+void 								BSP_UART3_Init(void);
+/**
+  * @}
+  */ 
+/* ADC1 bus function */
+/* Link function for UART peripherals */
+void 								BSP_ADC1_Init(void);
+/**
+  * @}
+  */ 
+/* EXTI function */
+/* Link function for EXTI  */
+static void 				BSP_SMB_CC_IRQHandler_Config(void);
+static void 				BSP_SMB_STAT_IRQHandler_Config(void);
+static void 				BSP_SMB_SYSOK_IRQHandler_Config(void);
+static void 				BSP_BOOST_OVP_IRQHandler_Config(void);
+static void 				BSP_KEY_IRQHandler_Config(void);
+static void 				BSP_EXIT15_10_IRQHandler_Config(void);
+/**
+  * @}
+  */ 
+/* Charging path function */
+/* Link function for setting charging path   */
+void 								BSP_IO_Config(PB_IO *io_ctrl);
+void 								BSP_IO_DEFAULT(void);
+void 								BSP_WLC2SMB(void);
+void 								BSP_USB2SMB(void);
+void 								BSP_USB2PHONE(void);
+void 								BSP_WLC2PHONE(void);
+void 								BSP_BOOST2PHONE(uint8_t enable_9v);
 
 /**
   * @}
   */ 
+/* Hardware init function */
+/* Link function for hardware initialization */
+void 								BSP_OUTPUT_GPIO_Init(void);
+void 							 	BSP_POWER_PACK_Init(void);
 
-/**
-  * @}
-  */ 
     
 #ifdef __cplusplus
 }
