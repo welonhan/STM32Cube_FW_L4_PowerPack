@@ -251,10 +251,18 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 
   /*##- 2- Configure peripheral GPIO #########################################*/
   /* ADC Channel GPIO pin configuration */
-  GPIO_InitStruct.Pin = USB_IN_ADC1_CHANNEL_PIN|DC_IN_ADC1_CHANNEL_PIN|CHG_OUT_ADC1_CHANNEL_PIN;
+  GPIO_InitStruct.Pin = USB_IN_ADC1_CHANNEL_PIN;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG_ADC_CONTROL;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(BSP_ADC1_CHANNEL_GPIO_PORT, &GPIO_InitStruct);
+	
+	GPIO_InitStruct.Pin = DC_IN_ADC1_CHANNEL_PIN;
+	HAL_GPIO_Init(BSP_ADC1_CHANNEL_GPIO_PORT, &GPIO_InitStruct);
+	
+	GPIO_InitStruct.Pin = CHG_OUT_ADC1_CHANNEL_PIN;
+	HAL_GPIO_Init(BSP_ADC1_CHANNEL_GPIO_PORT, &GPIO_InitStruct);
+	
+	
   /*##- 3- Configure DMA #####################################################*/
 
   /*********************** Configure DMA parameters ***************************/
@@ -275,7 +283,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
   __HAL_LINKDMA(hadc, DMA_Handle, DmaHandle);
 
   /* NVIC configuration for DMA Input data interrupt */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 1, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 13, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 

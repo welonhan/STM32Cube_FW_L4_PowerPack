@@ -8,6 +8,7 @@ uint32_t I2c1Timeout = BSP_I2C1_TIMEOUT_MAX;    /*<! Value of Timeout when I2C1 
 uint32_t I2c2Timeout = BSP_I2C2_TIMEOUT_MAX;    /*<! Value of Timeout when I2C1 communication fails */
 I2C_HandleTypeDef powerpack_I2c1,powerpack_I2c2;
 
+extern ADC_HandleTypeDef AdcHandle;
 extern uint16_t   aADCxConvertedData[4];
 /**
   * @brief  Configures LED GPIO.
@@ -426,7 +427,7 @@ void BSP_UART3_Init(void)
   */
 void BSP_ADC1_Init(void)
 {
-	ADC_HandleTypeDef             AdcHandle;
+	//ADC_HandleTypeDef             AdcHandle;
 	ADC_ChannelConfTypeDef        sConfig;
 	
 /* ### - 1 - Initialize ADC peripheral #################################### */
@@ -514,7 +515,7 @@ void BSP_SMB_CC_IRQHandler_Config(void)
 {
 	GPIO_InitTypeDef  GPIO_InitStruct;
 	
-	SMB_CC_STS_PIN_CLK_ENABLE() ;
+	SMB_CC_STS_PIN_CLK_ENABLE();
 	  
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;  
@@ -872,7 +873,7 @@ void BSP_POWER_PACK_Init(void)
 	BSP_I2C1_Init();
 	BSP_I2C2_Init();
 	BSP_UART3_Init();
-	BSP_ADC1_Init();
+	//BSP_ADC1_Init();
 	
 	BSP_SMB_CC_IRQHandler_Config();
  	BSP_SMB_STAT_IRQHandler_Config();
