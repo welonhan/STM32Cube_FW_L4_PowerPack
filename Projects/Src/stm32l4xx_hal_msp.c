@@ -38,6 +38,7 @@
 //#include "power_pack.h"
 //#include "stm32l4xx_hal.h"
 
+extern DMA_HandleTypeDef         		DmaHandle;
 /**
   * @brief I2C MSP Initialization 
   *        This function configures the hardware resources used in this example: 
@@ -202,7 +203,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart)
 
   /*##-3- Configure the NVIC for UART ########################################*/
   /* NVIC for USART */
-  HAL_NVIC_SetPriority(BSP_UART3_IRQn, 14, 0);
+  HAL_NVIC_SetPriority(BSP_UART3_IRQn, 0, 14);
   HAL_NVIC_EnableIRQ(BSP_UART3_IRQn);
   }
 }
@@ -237,7 +238,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef *huart)
 void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 {
   GPIO_InitTypeDef          GPIO_InitStruct;
-  DMA_HandleTypeDef         DmaHandle;
+  //DMA_HandleTypeDef         		DmaHandle;
 
   /*##-1- Enable peripherals and GPIO Clocks #################################*/
   /* Enable GPIO clock ****************************************/
@@ -274,7 +275,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
   DmaHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
   DmaHandle.Init.MemDataAlignment    = DMA_MDATAALIGN_HALFWORD;
   DmaHandle.Init.Mode                = DMA_CIRCULAR;
-  DmaHandle.Init.Priority            = DMA_PRIORITY_MEDIUM;
+  DmaHandle.Init.Priority            = DMA_PRIORITY_HIGH;
   /* Deinitialize  & Initialize the DMA for new transfer */
   HAL_DMA_DeInit(&DmaHandle);
   HAL_DMA_Init(&DmaHandle);
@@ -283,7 +284,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
   __HAL_LINKDMA(hadc, DMA_Handle, DmaHandle);
 
   /* NVIC configuration for DMA Input data interrupt */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 13, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 13);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
@@ -307,7 +308,9 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef *hadc)
 
   /*##-2- Disable peripherals and GPIO Clocks ################################*/
   /* De-initialize the ADC Channel GPIO pin */
-  HAL_GPIO_DeInit(BSP_ADC1_CHANNEL_GPIO_PORT, USB_IN_ADC1_CHANNEL_PIN|DC_IN_ADC1_CHANNEL_PIN|CHG_OUT_ADC1_CHANNEL_PIN);
+  HAL_GPIO_DeInit(BSP_ADC1_CHANNEL_GPIO_PORT, USB_IN_ADC1_CHANNEL_PIN);
+	HAL_GPIO_DeInit(BSP_ADC1_CHANNEL_GPIO_PORT, DC_IN_ADC1_CHANNEL_PIN);
+	HAL_GPIO_DeInit(BSP_ADC1_CHANNEL_GPIO_PORT, CHG_OUT_ADC1_CHANNEL_PIN);
 }
 /**
   * @}

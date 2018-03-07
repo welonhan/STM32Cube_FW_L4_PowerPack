@@ -53,8 +53,10 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* I2C handler declared in "main.c" file */
-extern I2C_HandleTypeDef I2cHandle;
-extern ADC_HandleTypeDef AdcHandle;
+extern I2C_HandleTypeDef 		I2cHandle;
+extern ADC_HandleTypeDef 		AdcHandle;
+extern DMA_HandleTypeDef 		DmaHandle;
+extern UART_HandleTypeDef 	UartHandle;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
@@ -167,6 +169,18 @@ void SysTick_Handler(void)
 /*  file (startup_stm32l4xx.s).                                               */
 /******************************************************************************/
 /**
+  * @brief  This function handles UART interrupt request.  
+  * @param  None
+  * @retval None
+  * @Note   This function is redefined in "main.h" and related to DMA  
+  *         used for USART data transmission     
+  */
+void USART3_IRQHandler(void)
+{
+  HAL_UART_IRQHandler(&UartHandle);
+}
+
+/**
   * @brief  This function handles I2C event interrupt request.  
   * @param  None
   * @retval None
@@ -196,7 +210,8 @@ void I2Cx_ER_IRQHandler(void)
 */
 void DMA1_Channel1_IRQHandler(void)
 {
-  HAL_DMA_IRQHandler(AdcHandle.DMA_Handle);
+  //HAL_DMA_IRQHandler(&DmaHandle);
+	HAL_DMA_IRQHandler(AdcHandle.DMA_Handle);
 }
 
 /**

@@ -402,7 +402,7 @@ typedef struct
 
 typedef struct
 {
-	SMB_IO_Ctrl 	SMB;
+	SMB_IO_Ctrl SMB;
 	PMUX1_IO_Ctrl PMUX1;
 	PMUX2_IO_Ctrl PMUX2;
 	BOOST_IO_Ctrl BOOST;
@@ -437,7 +437,7 @@ void 						 		BSP_LED_Light(uint8_t Led);
 void               	BSP_I2C1_Init(void);
 void               	BSP_I2C1_Error (void);
 void               	BSP_I2C1_MspInit(I2C_HandleTypeDef *hi2c);
-HAL_StatusTypeDef	 	BSP_I2C1_Write(uint8_t Addr, uint16_t Reg, uint16_t RegAddSize, uint8_t Value);
+void 							 	BSP_I2C1_Write(uint8_t Addr, uint16_t Reg, uint16_t RegAddSize, uint8_t Value);
 uint8_t 					 	BSP_I2C1_Read(uint8_t Addr, uint16_t Reg ,uint16_t RegAddSize);
 HAL_StatusTypeDef  	BSP_I2C1_WriteBuffer(uint16_t Addr, uint8_t Reg, uint16_t RegSize, uint8_t *pBuffer, uint16_t Length);
 HAL_StatusTypeDef  	BSP_I2C1_ReadBuffer(uint16_t Addr, uint8_t Reg, uint16_t RegSize, uint8_t *pBuffer, uint16_t Length);
@@ -450,7 +450,7 @@ HAL_StatusTypeDef  	BSP_I2C1_IsDeviceReady(uint16_t DevAddress, uint32_t Trials)
 void               	BSP_I2C2_Init(void);
 void               	BSP_I2C2_Error (void);
 void               	BSP_I2C2_MspInit(I2C_HandleTypeDef *hi2c);
-HAL_StatusTypeDef	 	BSP_I2C2_Write(uint8_t Addr, uint16_t Reg, uint16_t RegAddSize, uint8_t Value);
+void 							 	BSP_I2C2_Write(uint8_t Addr, uint16_t Reg, uint16_t RegAddSize, uint8_t Value);
 uint8_t 					 	BSP_I2C2_Read(uint8_t Addr, uint16_t Reg,uint16_t RegAddSize);
 HAL_StatusTypeDef  	BSP_I2C2_WriteBuffer(uint16_t Addr, uint16_t Reg, uint16_t RegSize, uint8_t *pBuffer, uint16_t Length);
 HAL_StatusTypeDef  	BSP_I2C2_ReadBuffer(uint16_t Addr, uint16_t Reg, uint16_t RegSize, uint8_t *pBuffer, uint16_t Length);

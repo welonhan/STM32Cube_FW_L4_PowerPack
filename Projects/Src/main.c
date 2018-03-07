@@ -38,6 +38,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdio.h>
 
 
 //#define I2C_TIMING      0x0020098E
@@ -49,9 +50,18 @@ I2C_HandleTypeDef I2cHandle;
 
 ADC_HandleTypeDef             AdcHandle;
 ADC_ChannelConfTypeDef        sConfig;
-uint16_t   aADCxConvertedData[4];
+uint16_t   										aADCxConvertedData[4];
 
-uint32_t usb_in_voltage, dc_in_voltage, chg_out_voltage;
+UART_HandleTypeDef 						UartHandle;
+__IO ITStatus UartReady = RESET;
+
+DMA_HandleTypeDef         		DmaHandle;
+
+uint32_t usb_in_voltage, dc_in_voltage, chg_out_voltage,vdda;
+
+uint32_t I2c1Timeout = BSP_I2C1_TIMEOUT_MAX;    /*<! Value of Timeout when I2C1 communication fails */
+uint32_t I2c2Timeout = BSP_I2C2_TIMEOUT_MAX;    /*<! Value of Timeout when I2C1 communication fails */
+I2C_HandleTypeDef powerpack_I2c1,powerpack_I2c2;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
@@ -64,6 +74,11 @@ uint8_t	p9221_fw_revision[4];
 uint8_t smb1381_id[4];
 
 uint8_t key_count=0;
+uint8_t reg_add_h,reg_add_l,reg_data,prefix;
+uint16_t reg_add16;
+
+uint8_t aRxBuffer[4];
+
 /* Private functions ---------------------------------------------------------*/
 
 /**
@@ -84,27 +99,54 @@ int main(void)
        - Low Level Initialization
      */
   HAL_Init();
+	
+	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_0);
 
   /* Configure the system clock to 80 MHz */
   SystemClock_Config();
   		
   BSP_POWER_PACK_Init();
+	printf("Power pack hardware init ok!\n\r");
 	
 	BSP_SMB_Enable();
-	BSP_SMB_Get_ID((uint8_t*)smb1381_id);
 	BSP_SMB_Init();
 	
+	BSP_USB2SMB();
 	
-	
+	ADC_Data_Handle();
+	printf("*****\n\rVDDA:%dmV\n\rUSB VOLTAGE:%dmV\n\rDC VOLTAGE:%dmV\n\rCHG VOLTAGE:%dmV\n\r",vdda,usb_in_voltage,dc_in_voltage,chg_out_voltage);
+		
   while(1)
   {
-	  //HAL_Delay(1000);
-	  //BSP_LED_Toggle(LED1);
-		//BSP_LED_Toggle(LED2);
-		//BSP_LED_Toggle(LED3);
-		//BSP_LED_Toggle(LED4);
-		ADC_Data_Handle();
-  }
+		
+		if(HAL_UART_Receive_IT(&UartHandle, (uint8_t *)aRxBuffer, 4) != HAL_OK)
+		{
+			printf("UART Error\n\r");
+		}
+		/*##-3- Wait for the end of the transfer ###################################*/   
+		while (UartReady != SET)
+		{
+		}
+  
+		/* Reset transmission flag */
+		UartReady = RESET;
+			reg_add_h=aRxBuffer[1];
+			reg_add_l=aRxBuffer[2];
+			reg_data=aRxBuffer[3];
+			reg_add16=(uint16_t)(reg_add_h<<8)+(uint16_t)reg_add_l;
+			if(aRxBuffer[0]==0xAA)//write registor
+			{
+				
+				printf("Write reg_add16:0x%x,reg_data=0x%x\n\r",reg_add16,reg_data);
+				if((BSP_I2C2_Write(SMB_ADDRESS, reg_add16, I2C_MEMADD_SIZE_16BIT, reg_data))!=HAL_OK)
+					printf("SBM1381 setting error!\n\r");		
+			}
+			else if(aRxBuffer[0]==0x0A)//read registor
+			{				
+				reg_data=BSP_I2C2_Read(SMB_ADDRESS, reg_add16, I2C_MEMADD_SIZE_16BIT);
+				printf("Read reg_add16:0x%x,reg_data=0x%x\n\r",reg_add16,reg_data);		
+			}
+	}
 
 }
 
@@ -180,6 +222,35 @@ static void Error_Handler(void)
 }
 
 /**
+  * @brief  Tx Transfer completed callback
+  * @param  UartHandle: UART handle. 
+  * @note   This example shows a simple way to report end of IT Tx transfer, and 
+  *         you can add your own implementation. 
+  * @retval None
+  */
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
+{
+  /* Set transmission flag: transfer complete */
+  UartReady = SET;
+
+  
+}
+
+/**
+  * @brief  Rx Transfer completed callback
+  * @param  UartHandle: UART handle
+  * @note   This example shows a simple way to report end of DMA Rx transfer, and 
+  *         you can add your own implementation.
+  * @retval None
+  */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
+{
+  /* Set transmission flag: transfer complete */
+  UartReady = SET;
+  
+  
+}
+/**
   * @brief EXTI line detection callbacks
   * @param GPIO_Pin: Specifies the pins connected EXTI line
   * @retval None
@@ -254,21 +325,39 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 void ADC_Data_Handle(void)
 {
-	uint32_t vrefint_data,vrefint_cal,vdda;
+	uint32_t vrefint_data,vrefint_cal;
 	vrefint_cal=(uint32_t)(*VREFINT_CAL_ADDR);
 	
 	vrefint_data=aADCxConvertedData[3];
 	vdda=(3000*vrefint_cal)/vrefint_data;
 	
 
-	usb_in_voltage=(vdda*aADCxConvertedData[0]*11)/4096;
-	dc_in_voltage=(vdda*aADCxConvertedData[0]*11)/4096;
-	chg_out_voltage=(vdda*aADCxConvertedData[0]*11)/4096;
+	usb_in_voltage=(vdda*aADCxConvertedData[0])/4096;
+	dc_in_voltage=(vdda*aADCxConvertedData[1])/4096;
+	chg_out_voltage=(vdda*aADCxConvertedData[2])/4096;
 
 
 
 }
 
+int fputc(int ch, FILE *f)
+{
+	UartHandle.Instance->TDR = ((uint8_t)ch & (uint16_t)0x01FF);
+	while (!(UartHandle.Instance->ISR	& USART_ISR_TXE));
+	return (ch);
+}
+
+int fgetc(FILE *f)
+{
+	uint16_t uhMask;
+	
+	UART_WaitOnFlagUntilTimeout(&UartHandle,USART_ISR_RXNE,RESET,0,10);
+	
+	UART_MASK_COMPUTATION(&UartHandle);
+  
+	uhMask = UartHandle.Mask;
+	return (int)(UartHandle.Instance->RDR & uhMask);
+}
 
 
 #ifdef  USE_FULL_ASSERT

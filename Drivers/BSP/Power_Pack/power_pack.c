@@ -1,15 +1,20 @@
 /* Includes ------------------------------------------------------------------*/
 #include "power_pack.h"
 
+#include <stdio.h>
+
 const uint16_t 	LED_PIN[LEDn]={LED1_PIN,LED2_PIN,LED3_PIN,LED4_PIN};
 GPIO_TypeDef* 	LED_PORT[LEDn]={LED1_GPIO_PORT,LED2_GPIO_PORT,LED3_GPIO_PORT,LED4_GPIO_PORT};
 
-uint32_t I2c1Timeout = BSP_I2C1_TIMEOUT_MAX;    /*<! Value of Timeout when I2C1 communication fails */
-uint32_t I2c2Timeout = BSP_I2C2_TIMEOUT_MAX;    /*<! Value of Timeout when I2C1 communication fails */
-I2C_HandleTypeDef powerpack_I2c1,powerpack_I2c2;
+extern uint32_t I2c1Timeout;    /*<! Value of Timeout when I2C1 communication fails */
+extern uint32_t I2c2Timeout;    /*<! Value of Timeout when I2C1 communication fails */
+extern I2C_HandleTypeDef powerpack_I2c1,powerpack_I2c2;
 
-extern ADC_HandleTypeDef AdcHandle;
+extern ADC_HandleTypeDef 						AdcHandle;
+extern ADC_ChannelConfTypeDef       sConfig;
 extern uint16_t   aADCxConvertedData[4];
+
+extern UART_HandleTypeDef UartHandle;
 /**
   * @brief  Configures LED GPIO.
   * @param  Led: Specifies the Led to be configured. 
@@ -82,7 +87,7 @@ void BSP_LED_Toggle(Led_TypeDef Led)
   *            @arg  1-15
 	*			@arg	led1 	led2 	led3 	led4
 	*			0			0			0			0			0	
-	*			1			0			0			0			1
+	*			1			1			0			0			0
 	*			15		1			1			1			1
   * @retval None
   */
@@ -132,18 +137,13 @@ void BSP_I2C1_Init(void)
   * @param  Value: Data to be written
   * @retval None
   */
-void BSP_I2C1_Write(uint8_t Addr, uint16_t Reg, uint16_t RegAddSize, uint8_t Value)
+HAL_StatusTypeDef BSP_I2C1_Write(uint8_t Addr, uint16_t Reg, uint16_t RegAddSize, uint8_t Value)
 {
   HAL_StatusTypeDef status = HAL_OK;
 
   status = HAL_I2C_Mem_Write(&powerpack_I2c1, Addr, (uint16_t)Reg, RegAddSize, &Value, 1, I2c1Timeout); 
 
-  /* Check the communication status */
-  if(status != HAL_OK)
-  {
-    /* Execute user timeout callback */
-    BSP_I2C1_Error();
-  }
+  return status;
 }
 
 /**
@@ -276,18 +276,13 @@ void BSP_I2C2_Init(void)
   * @param  Value: Data to be written
   * @retval None
   */
-void BSP_I2C2_Write(uint8_t Addr, uint16_t Reg, uint16_t RegAddSize, uint8_t Value)
+HAL_StatusTypeDef BSP_I2C2_Write(uint8_t Addr, uint16_t Reg, uint16_t RegAddSize, uint8_t Value)
 {
   HAL_StatusTypeDef status = HAL_OK;
 
   status = HAL_I2C_Mem_Write(&powerpack_I2c2, Addr, (uint16_t)Reg, RegAddSize, &Value, 1, I2c2Timeout); 
-
-  /* Check the communication status */
-  if(status != HAL_OK)
-  {
-    /* Execute user timeout callback */
-    BSP_I2C2_Error();
-  }
+	
+	return status;  
 }
 
 /**
@@ -394,7 +389,7 @@ void BSP_I2C2_Error(void)
   */
 void BSP_UART3_Init(void)
 {
-	UART_HandleTypeDef UartHandle;
+	
 /*##-1- Configure the UART peripheral ######################################*/
   /* Put the USART peripheral in the Asynchronous mode (UART Mode) */
   /* UART configured as follows:
@@ -405,7 +400,7 @@ void BSP_UART3_Init(void)
       - Hardware flow control disabled (RTS and CTS signals) */
   UartHandle.Instance        = BSP_UART3;
 
-  UartHandle.Init.BaudRate   = 9600;
+  UartHandle.Init.BaudRate   = 115200;
   UartHandle.Init.WordLength = UART_WORDLENGTH_8B;
   UartHandle.Init.StopBits   = UART_STOPBITS_1;
   UartHandle.Init.Parity     = UART_PARITY_NONE;
@@ -428,7 +423,7 @@ void BSP_UART3_Init(void)
 void BSP_ADC1_Init(void)
 {
 	//ADC_HandleTypeDef             AdcHandle;
-	ADC_ChannelConfTypeDef        sConfig;
+	//ADC_ChannelConfTypeDef        sConfig;
 	
 /* ### - 1 - Initialize ADC peripheral #################################### */
   AdcHandle.Instance          = BSP_ADC1;
@@ -438,11 +433,11 @@ void BSP_ADC1_Init(void)
     //Error_Handler();
   }
 
-  AdcHandle.Init.ClockPrescaler        = ADC_CLOCK_SYNC_PCLK_DIV2;      /* Synchronous clock mode, input ADC clock divided by 2*/
+  AdcHandle.Init.ClockPrescaler        = ADC_CLOCK_SYNC_PCLK_DIV4;      /* Synchronous clock mode, input ADC clock divided by 2*/
   AdcHandle.Init.Resolution            = ADC_RESOLUTION_12B;            /* 12-bit resolution for converted data */
   AdcHandle.Init.DataAlign             = ADC_DATAALIGN_RIGHT;           /* Right-alignment for converted data */
-  AdcHandle.Init.ScanConvMode          = ENABLE;                       /* Sequencer disabled (ADC conversion on only 1 channel: channel set on rank 1) */
-  AdcHandle.Init.EOCSelection          = ADC_EOC_SINGLE_CONV;           /* EOC flag picked-up to indicate conversion end */
+  AdcHandle.Init.ScanConvMode          = ENABLE;                      	/* Sequencer disabled (ADC conversion on only 1 channel: channel set on rank 1) */
+  AdcHandle.Init.EOCSelection          = ADC_EOC_SEQ_CONV;           		/* EOC flag picked-up to indicate conversion end */
   AdcHandle.Init.LowPowerAutoWait      = DISABLE;                       /* Auto-delayed conversion feature disabled */
   AdcHandle.Init.ContinuousConvMode    = ENABLE;                        /* Continuous mode enabled (automatic conversion restart after each conversion) */
   AdcHandle.Init.NbrOfConversion       = 4;                             /* Parameter discarded because sequencer is disabled */
@@ -457,6 +452,7 @@ void BSP_ADC1_Init(void)
   if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
   {
     //Error_Handler();
+		printf("HAL_ADC_Init fail\n\r");
   }
   
   
@@ -464,18 +460,21 @@ void BSP_ADC1_Init(void)
   if (HAL_ADCEx_Calibration_Start(&AdcHandle, ADC_SINGLE_ENDED) !=  HAL_OK)
   {
    // Error_Handler();
+		printf("HAL_ADCEx_Calibration_Start fail\n\r");
+		
   }
   
   /* ### - 3 - Channel configuration ######################################## */
   sConfig.Channel      = USB_IN_ADC1_CHANNEL;         /* Sampled channel number */
   sConfig.Rank         = ADC_REGULAR_RANK_1;          /* Rank of sampled channel number ADCx_CHANNEL */
-  sConfig.SamplingTime = ADC_SAMPLETIME_6CYCLES_5;   	/* Sampling time (number of clock cycles unit) */
+  sConfig.SamplingTime = LL_ADC_SAMPLINGTIME_47CYCLES_5;   	/* Sampling time (number of clock cycles unit) */
   sConfig.SingleDiff   = ADC_SINGLE_ENDED;            /* Single-ended input channel */
   sConfig.OffsetNumber = ADC_OFFSET_NONE;             /* No offset subtraction */ 
   sConfig.Offset = 0;                                 /* Parameter discarded because offset correction is disabled */
   if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK)
   {
     //Error_Handler();
+		printf("HAL_ADC_ConfigChannel fail:USB IN\n\r");
   }
   
 	sConfig.Channel      = DC_IN_ADC1_CHANNEL;          /* Sampled channel number */
@@ -483,18 +482,21 @@ void BSP_ADC1_Init(void)
   if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK)
   {
     //Error_Handler();
+		printf("HAL_ADC_ConfigChannel fail:DC IN\n\r");
   }
 	sConfig.Channel      = CHG_OUT_ADC1_CHANNEL;          /* Sampled channel number */
   sConfig.Rank         = ADC_REGULAR_RANK_3;           /* Rank of sampled channel number ADCx_CHANNEL */
   if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK)
   {
     //Error_Handler();
+		printf("HAL_ADC_ConfigChannel fail:CHG OUT\n\r");
   }
-		sConfig.Channel    = ADC_CHANNEL_VREFINT;          /* Sampled channel number */
+	sConfig.Channel    = ADC_CHANNEL_VREFINT;          /* Sampled channel number */
   sConfig.Rank         = ADC_REGULAR_RANK_4;           /* Rank of sampled channel number ADCx_CHANNEL */
   if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK)
   {
     //Error_Handler();
+		printf("HAL_ADC_ConfigChannel fail:VREFINT\n\r");
   }
 	
   /* ### - 4 - Start conversion in DMA mode ################################# */
@@ -504,6 +506,7 @@ void BSP_ADC1_Init(void)
                        ) != HAL_OK)
   {
     //Error_Handler();
+		printf("HAL_ADC_Start_DMA fail\n\r");
   }
 	
 }
@@ -523,7 +526,7 @@ void BSP_SMB_CC_IRQHandler_Config(void)
 	GPIO_InitStruct.Pin = SMB_CC_STS_PIN;
   HAL_GPIO_Init(SMB_CC_STS_PIN_GPIO_PORT, &GPIO_InitStruct);	 
   
-  HAL_NVIC_SetPriority((IRQn_Type)EXTI0_IRQn, 3, 0);
+  HAL_NVIC_SetPriority((IRQn_Type)EXTI0_IRQn, 0, 1);
 	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI0_IRQn));
 }
 
@@ -539,7 +542,7 @@ void BSP_SMB_STAT_IRQHandler_Config(void)
 	GPIO_InitStruct.Pin = SMB_STAT_PIN;
   HAL_GPIO_Init(SMB_STAT_PIN_GPIO_PORT, &GPIO_InitStruct);	 
   
-  HAL_NVIC_SetPriority((IRQn_Type)EXTI1_IRQn, 4, 0);
+  HAL_NVIC_SetPriority((IRQn_Type)EXTI1_IRQn, 0, 4);
 	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI1_IRQn));
 }
 void BSP_SMB_SYSOK_IRQHandler_Config(void)
@@ -554,7 +557,7 @@ void BSP_SMB_SYSOK_IRQHandler_Config(void)
 	GPIO_InitStruct.Pin = SMB_SYS_PIN;
   HAL_GPIO_Init(SMB_SYS_PIN_GPIO_PORT, &GPIO_InitStruct);	 
   
-  HAL_NVIC_SetPriority((IRQn_Type)EXTI2_IRQn, 5, 0);
+  HAL_NVIC_SetPriority((IRQn_Type)EXTI2_IRQn, 0, 5);
 	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI2_IRQn));
 }
 
@@ -570,7 +573,7 @@ void BSP_BOOST_OVP_IRQHandler_Config(void)
 	GPIO_InitStruct.Pin = BOOST_OCP_INT_PIN;
   HAL_GPIO_Init(BOOST_OCP_INT_PIN_GPIO_PORT, &GPIO_InitStruct);	 
   
-  HAL_NVIC_SetPriority((IRQn_Type)EXTI3_IRQn, 6, 0);
+  HAL_NVIC_SetPriority((IRQn_Type)EXTI3_IRQn, 0, 6);
 	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI3_IRQn));
 }
 
@@ -586,7 +589,7 @@ void BSP_KEY_IRQHandler_Config(void)
 	GPIO_InitStruct.Pin = KEY_PIN;
   HAL_GPIO_Init(KEY_PIN_GPIO_PORT, &GPIO_InitStruct);	 
   
-  HAL_NVIC_SetPriority((IRQn_Type)EXTI4_IRQn, 7, 0);
+  HAL_NVIC_SetPriority((IRQn_Type)EXTI4_IRQn, 0, 7);
 	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI4_IRQn));
 }
 
@@ -610,7 +613,7 @@ void	BSP_EXIT15_10_IRQHandler_Config(void)
 	GPIO_InitStruct.Pin = PHONE_ATTACHED_PIN;
   HAL_GPIO_Init(PHONE_ATTACHED_PIN_GPIO_PORT, &GPIO_InitStruct);  
   
-  HAL_NVIC_SetPriority((IRQn_Type)EXTI15_10_IRQn, 8, 0);
+  HAL_NVIC_SetPriority((IRQn_Type)EXTI15_10_IRQn, 0, 8);
 	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI15_10_IRQn));
 }
 
@@ -638,149 +641,149 @@ void BSP_IO_Config(PB_IO *io_ctrl)
 
 void BSP_IO_DEFAULT(void)
 {
-	PB_IO *io_ctrl;
+	PB_IO io_ctrl;
 	
-	io_ctrl->SMB.LPMODE_EN			=GPIO_PIN_RESET;
-	io_ctrl->SMB.SUSP						=GPIO_PIN_SET;
-	io_ctrl->SMB.RST						=GPIO_PIN_SET;
-	io_ctrl->SMB.SMUX_SEL				=GPIO_PIN_SET;
+	io_ctrl.SMB.LPMODE_EN				=GPIO_PIN_SET;
+	io_ctrl.SMB.SUSP						=GPIO_PIN_SET;
+	io_ctrl.SMB.RST							=GPIO_PIN_SET;
+	io_ctrl.SMB.SMUX_SEL				=GPIO_PIN_SET;
 	
-	io_ctrl->PMUX1.MODE					=GPIO_PIN_RESET;
-	io_ctrl->PMUX1.CTRL					=GPIO_PIN_RESET;
-	io_ctrl->PMUX1.CHA_EN				=GPIO_PIN_SET;
-	io_ctrl->PMUX1.CHB_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX1.MODE					=GPIO_PIN_RESET;
+	io_ctrl.PMUX1.CTRL					=GPIO_PIN_RESET;
+	io_ctrl.PMUX1.CHA_EN				=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CHB_EN				=GPIO_PIN_RESET;
 		
-	io_ctrl->PMUX2.MODE					=GPIO_PIN_RESET;
-	io_ctrl->PMUX2.CHA_EN				=GPIO_PIN_RESET;
-	io_ctrl->PMUX2.CHB_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.MODE					=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHB_EN				=GPIO_PIN_RESET;
 	
-	io_ctrl->BOOST.ENABLE				=GPIO_PIN_RESET;
-	io_ctrl->BOOST.B9V_EN				=GPIO_PIN_RESET;
+	io_ctrl.BOOST.ENABLE				=GPIO_PIN_RESET;
+	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
 	
-	BSP_IO_Config(io_ctrl);	
+	BSP_IO_Config(&io_ctrl);	
 }
 
 void BSP_USB2SMB(void)
 {
-	PB_IO *io_ctrl;
+	PB_IO io_ctrl;
 	
-	io_ctrl->SMB.LPMODE_EN			=GPIO_PIN_SET;
-	io_ctrl->SMB.SUSP						=GPIO_PIN_SET;
-	io_ctrl->SMB.RST						=GPIO_PIN_SET;
-	io_ctrl->SMB.SMUX_SEL				=GPIO_PIN_RESET;
+	io_ctrl.SMB.LPMODE_EN				=GPIO_PIN_SET;
+	io_ctrl.SMB.SUSP						=GPIO_PIN_SET;
+	io_ctrl.SMB.RST							=GPIO_PIN_SET;
+	io_ctrl.SMB.SMUX_SEL				=GPIO_PIN_RESET;
 	
-	io_ctrl->PMUX1.MODE					=GPIO_PIN_SET;
-	io_ctrl->PMUX1.CTRL					=GPIO_PIN_SET;
-	io_ctrl->PMUX1.CHA_EN				=GPIO_PIN_SET;
-	io_ctrl->PMUX1.CHB_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX1.MODE					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CTRL					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CHA_EN				=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CHB_EN				=GPIO_PIN_RESET;
 		
-	io_ctrl->PMUX2.MODE					=GPIO_PIN_RESET;
-	io_ctrl->PMUX2.CHA_EN				=GPIO_PIN_RESET;
-	io_ctrl->PMUX2.CHB_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.MODE					=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHB_EN				=GPIO_PIN_RESET;
 	
-	io_ctrl->BOOST.ENABLE				=GPIO_PIN_RESET;
-	io_ctrl->BOOST.B9V_EN				=GPIO_PIN_RESET;
+	io_ctrl.BOOST.ENABLE				=GPIO_PIN_RESET;
+	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
 	
-	BSP_IO_Config(io_ctrl);	
+	BSP_IO_Config(&io_ctrl);	
 }
 
 void BSP_WLC2SMB(void)
 {
-	PB_IO *io_ctrl;
+	PB_IO io_ctrl;
 	
-	io_ctrl->SMB.LPMODE_EN			=GPIO_PIN_SET;
-	io_ctrl->SMB.SUSP						=GPIO_PIN_SET;
-	io_ctrl->SMB.RST						=GPIO_PIN_SET;
-	io_ctrl->SMB.SMUX_SEL				=GPIO_PIN_RESET;
+	io_ctrl.SMB.LPMODE_EN				=GPIO_PIN_SET;
+	io_ctrl.SMB.SUSP						=GPIO_PIN_SET;
+	io_ctrl.SMB.RST							=GPIO_PIN_SET;
+	io_ctrl.SMB.SMUX_SEL				=GPIO_PIN_RESET;
 	
-	io_ctrl->PMUX1.MODE					=GPIO_PIN_SET;
-	io_ctrl->PMUX1.CTRL					=GPIO_PIN_SET;
-	io_ctrl->PMUX1.CHA_EN				=GPIO_PIN_RESET;
-	io_ctrl->PMUX1.CHB_EN				=GPIO_PIN_SET;
+	io_ctrl.PMUX1.MODE					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CTRL					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX1.CHB_EN				=GPIO_PIN_SET;
 		
-	io_ctrl->PMUX2.MODE					=GPIO_PIN_RESET;
-	io_ctrl->PMUX2.CHA_EN				=GPIO_PIN_RESET;
-	io_ctrl->PMUX2.CHB_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.MODE					=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHB_EN				=GPIO_PIN_RESET;
 	
-	io_ctrl->BOOST.ENABLE				=GPIO_PIN_RESET;
-	io_ctrl->BOOST.B9V_EN				=GPIO_PIN_RESET;
+	io_ctrl.BOOST.ENABLE				=GPIO_PIN_RESET;
+	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
 	
-	BSP_IO_Config(io_ctrl);	
+	BSP_IO_Config(&io_ctrl);	
 }
 
 void BSP_USB2PHONE(void)
 {
-	PB_IO *io_ctrl;
+	PB_IO io_ctrl;
 	
-	io_ctrl->SMB.LPMODE_EN			=GPIO_PIN_SET;
-	io_ctrl->SMB.SUSP						=GPIO_PIN_SET;
-	io_ctrl->SMB.RST						=GPIO_PIN_SET;
-	io_ctrl->SMB.SMUX_SEL				=GPIO_PIN_RESET;
+	io_ctrl.SMB.LPMODE_EN				=GPIO_PIN_SET;
+	io_ctrl.SMB.SUSP						=GPIO_PIN_SET;
+	io_ctrl.SMB.RST							=GPIO_PIN_SET;
+	io_ctrl.SMB.SMUX_SEL				=GPIO_PIN_RESET;
 	
-	io_ctrl->PMUX1.MODE					=GPIO_PIN_SET;
-	io_ctrl->PMUX1.CTRL					=GPIO_PIN_SET;
-	io_ctrl->PMUX1.CHA_EN				=GPIO_PIN_RESET;
-	io_ctrl->PMUX1.CHB_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX1.MODE					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CTRL					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX1.CHB_EN				=GPIO_PIN_RESET;
 		
-	io_ctrl->PMUX2.MODE					=GPIO_PIN_RESET;
-	io_ctrl->PMUX2.CHA_EN				=GPIO_PIN_SET;
-	io_ctrl->PMUX2.CHB_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.MODE					=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHA_EN				=GPIO_PIN_SET;
+	io_ctrl.PMUX2.CHB_EN				=GPIO_PIN_RESET;
 	
-	io_ctrl->BOOST.ENABLE				=GPIO_PIN_RESET;
-	io_ctrl->BOOST.B9V_EN				=GPIO_PIN_RESET;
+	io_ctrl.BOOST.ENABLE				=GPIO_PIN_RESET;
+	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
 	
-	BSP_IO_Config(io_ctrl);	
+	BSP_IO_Config(&io_ctrl);	
 }
 void BSP_WLC2PHONE(void)
 {
-	PB_IO *io_ctrl;
+	PB_IO io_ctrl;
 	
-	io_ctrl->SMB.LPMODE_EN			=GPIO_PIN_SET;
-	io_ctrl->SMB.SUSP						=GPIO_PIN_SET;
-	io_ctrl->SMB.RST						=GPIO_PIN_SET;
-	io_ctrl->SMB.SMUX_SEL				=GPIO_PIN_RESET;
+	io_ctrl.SMB.LPMODE_EN			=GPIO_PIN_SET;
+	io_ctrl.SMB.SUSP						=GPIO_PIN_SET;
+	io_ctrl.SMB.RST						=GPIO_PIN_SET;
+	io_ctrl.SMB.SMUX_SEL				=GPIO_PIN_RESET;
 	
-	io_ctrl->PMUX1.MODE					=GPIO_PIN_SET;
-	io_ctrl->PMUX1.CTRL					=GPIO_PIN_SET;
-	io_ctrl->PMUX1.CHA_EN				=GPIO_PIN_RESET;
-	io_ctrl->PMUX1.CHB_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX1.MODE					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CTRL					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX1.CHB_EN				=GPIO_PIN_RESET;
 		
-	io_ctrl->PMUX2.MODE					=GPIO_PIN_RESET;
-	io_ctrl->PMUX2.CHA_EN				=GPIO_PIN_RESET;
-	io_ctrl->PMUX2.CHB_EN				=GPIO_PIN_SET;
+	io_ctrl.PMUX2.MODE					=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHB_EN				=GPIO_PIN_SET;
 	
-	io_ctrl->BOOST.ENABLE				=GPIO_PIN_RESET;
-	io_ctrl->BOOST.B9V_EN				=GPIO_PIN_RESET;
+	io_ctrl.BOOST.ENABLE				=GPIO_PIN_RESET;
+	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
 	
-	BSP_IO_Config(io_ctrl);	
+	BSP_IO_Config(&io_ctrl);	
 }
 
 void BSP_BOOST2PHONE(uint8_t enable_9v)
 {
-	PB_IO *io_ctrl;
+	PB_IO io_ctrl;
 	
-	io_ctrl->SMB.LPMODE_EN			=GPIO_PIN_SET;
-	io_ctrl->SMB.SUSP						=GPIO_PIN_SET;
-	io_ctrl->SMB.RST						=GPIO_PIN_SET;
-	io_ctrl->SMB.SMUX_SEL				=GPIO_PIN_RESET;
+	io_ctrl.SMB.LPMODE_EN			=GPIO_PIN_SET;
+	io_ctrl.SMB.SUSP						=GPIO_PIN_SET;
+	io_ctrl.SMB.RST						=GPIO_PIN_SET;
+	io_ctrl.SMB.SMUX_SEL				=GPIO_PIN_RESET;
 	
-	io_ctrl->PMUX1.MODE					=GPIO_PIN_SET;
-	io_ctrl->PMUX1.CTRL					=GPIO_PIN_SET;
-	io_ctrl->PMUX1.CHA_EN				=GPIO_PIN_SET;
-	io_ctrl->PMUX1.CHB_EN				=GPIO_PIN_SET;
+	io_ctrl.PMUX1.MODE					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CTRL					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CHA_EN				=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CHB_EN				=GPIO_PIN_SET;
 		
-	io_ctrl->PMUX2.MODE					=GPIO_PIN_RESET;
-	io_ctrl->PMUX2.CHA_EN				=GPIO_PIN_RESET;
-	io_ctrl->PMUX2.CHB_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.MODE					=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHB_EN				=GPIO_PIN_RESET;
 	
-	io_ctrl->BOOST.ENABLE				=GPIO_PIN_SET;
+	io_ctrl.BOOST.ENABLE				=GPIO_PIN_SET;
 	
 	if(enable_9v)
-	io_ctrl->BOOST.B9V_EN				=GPIO_PIN_SET;
+	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_SET;
 	else
-	io_ctrl->BOOST.B9V_EN				=GPIO_PIN_RESET;
+	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
 	
-	BSP_IO_Config(io_ctrl);	
+	BSP_IO_Config(&io_ctrl);	
 }
 
 /******************************* Hardware Init Routines *********************************/
@@ -868,19 +871,38 @@ void BSP_OUTPUT_GPIO_Init(void)
 
 void BSP_POWER_PACK_Init(void)
 {
+	BSP_UART3_Init();
+	printf("\n\r\n\r\n\r\n\r");
+	printf("******************************\n\r");
+	printf("*        Power pack          *\n\r");
+	printf("*                            *\n\r");
+	printf("******************************\n\r");
+	printf("UART3 init ok!\n\r");
+	
 	BSP_OUTPUT_GPIO_Init();
+	printf("GPIO init ok!\n\r");
+	
+	BSP_IO_DEFAULT();
+	printf("Setting GPIO to default!\n\r");
+	
 	BSP_LED_Init();
+	printf("LED init ok!\n\r");
+	
 	BSP_I2C1_Init();
 	BSP_I2C2_Init();
-	BSP_UART3_Init();
-	//BSP_ADC1_Init();
+	printf("I2C init ok!\n\r");
+	
+	BSP_ADC1_Init();
+	printf("ADC1 init ok!\n\r");
 	
 	BSP_SMB_CC_IRQHandler_Config();
  	BSP_SMB_STAT_IRQHandler_Config();
  	BSP_SMB_SYSOK_IRQHandler_Config();
  	BSP_BOOST_OVP_IRQHandler_Config();
  	BSP_KEY_IRQHandler_Config();
- 	BSP_EXIT15_10_IRQHandler_Config();
+	printf("KEY init ok!\n\r");
+	
+ 	//BSP_EXIT15_10_IRQHandler_Config();
 	
 }
 
