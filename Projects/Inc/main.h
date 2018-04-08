@@ -43,7 +43,25 @@
 #include "smb1381.h"
 #include "power_pack.h"
 
+#define __PACK_BSP_VERSION_MAIN   (0x01) /*!< [31:24] main version */
+#define __PACK_BSP_VERSION_SUB   	(0x00) /*!< [23:16] sub1 version */
+
+#define __PACK_BSP_VERSION        ((__PACK_BSP_VERSION_MAIN << 8)\
+                                                 |(__PACK_BSP_VERSION_SUB))
+                                            
+																								 
 /* Exported types ------------------------------------------------------------*/
+typedef struct
+{
+	uint8_t 	ATTACH;
+	uint8_t 	USB;
+	uint8_t 	DCIN;
+	uint8_t		PHONE_USB;
+	uint8_t 	PHONE_SOC;
+	uint8_t 	PACK_SOC;
+	uint16_t	PHONE_USB_VOLTAGE;
+}PACK_INFO;
+
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */

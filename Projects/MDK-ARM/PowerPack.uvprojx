@@ -216,7 +216,7 @@
             <GenPPlst>0</GenPPlst>
             <AdsCpuType>"Cortex-M4"</AdsCpuType>
             <RvctDeviceName></RvctDeviceName>
-            <mOS>0</mOS>
+            <mOS>1</mOS>
             <uocRom>0</uocRom>
             <uocRam>0</uocRam>
             <hadIROM>1</hadIROM>
@@ -373,7 +373,7 @@
               <MiscControls>--C99</MiscControls>
               <Define>STM32L431xx,USE_HAL_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;../../Drivers/CMSIS/Device/ST/STM32L4xx/Include;../../Drivers/STM32L4xx_HAL_Driver/Inc;../../Drivers/BSP/STM32L4xx_Nucleo_32;../../Drivers\BSP\Power_Pack</IncludePath>
+              <IncludePath>../Inc;../../Drivers/CMSIS/Device/ST/STM32L4xx/Include;../../Drivers/STM32L4xx_HAL_Driver/Inc;../../Drivers/BSP/STM32L4xx_Nucleo_32;../../Drivers\BSP\Power_Pack;..\..\FreeRTOS\Source\include;..\..\FreeRTOS\Source\portable\RVDS\ARM_CM4F;..\..\FreeRTOS\Source\CMSIS_RTOS</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -955,6 +955,56 @@
               <FileName>power_pack.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\Drivers\BSP\Power_Pack\power_pack.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Project/FreeRTOS/Source</GroupName>
+          <Files>
+            <File>
+              <FileName>queue.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\FreeRTOS\Source\queue.c</FilePath>
+            </File>
+            <File>
+              <FileName>list.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\FreeRTOS\Source\list.c</FilePath>
+            </File>
+            <File>
+              <FileName>tasks.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\FreeRTOS\Source\tasks.c</FilePath>
+            </File>
+            <File>
+              <FileName>timers.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\FreeRTOS\Source\timers.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Project/FreeRTOS/Source/portable</GroupName>
+          <Files>
+            <File>
+              <FileName>port.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\FreeRTOS\Source\portable\RVDS\ARM_CM4F\port.c</FilePath>
+            </File>
+            <File>
+              <FileName>heap_4.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\FreeRTOS\Source\portable\MemMang\heap_4.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Project/FreeRTOS/Source/CMSIS_RTOS</GroupName>
+          <Files>
+            <File>
+              <FileName>cmsis_os.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\FreeRTOS\Source\CMSIS_RTOS\cmsis_os.c</FilePath>
             </File>
           </Files>
         </Group>

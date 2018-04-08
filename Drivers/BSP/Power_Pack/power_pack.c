@@ -526,8 +526,8 @@ void BSP_SMB_CC_IRQHandler_Config(void)
 	GPIO_InitStruct.Pin = SMB_CC_STS_PIN;
   HAL_GPIO_Init(SMB_CC_STS_PIN_GPIO_PORT, &GPIO_InitStruct);	 
   
-  HAL_NVIC_SetPriority((IRQn_Type)EXTI0_IRQn, 0, 1);
-	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI0_IRQn));
+  //HAL_NVIC_SetPriority((IRQn_Type)EXTI0_IRQn, 1, 0);
+	//HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI0_IRQn));
 }
 
 void BSP_SMB_STAT_IRQHandler_Config(void)
@@ -542,8 +542,8 @@ void BSP_SMB_STAT_IRQHandler_Config(void)
 	GPIO_InitStruct.Pin = SMB_STAT_PIN;
   HAL_GPIO_Init(SMB_STAT_PIN_GPIO_PORT, &GPIO_InitStruct);	 
   
-  HAL_NVIC_SetPriority((IRQn_Type)EXTI1_IRQn, 0, 4);
-	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI1_IRQn));
+  //HAL_NVIC_SetPriority((IRQn_Type)EXTI1_IRQn, 4 ,0);
+	//HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI1_IRQn));
 }
 void BSP_SMB_SYSOK_IRQHandler_Config(void)
 {
@@ -557,8 +557,8 @@ void BSP_SMB_SYSOK_IRQHandler_Config(void)
 	GPIO_InitStruct.Pin = SMB_SYS_PIN;
   HAL_GPIO_Init(SMB_SYS_PIN_GPIO_PORT, &GPIO_InitStruct);	 
   
-  HAL_NVIC_SetPriority((IRQn_Type)EXTI2_IRQn, 0, 5);
-	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI2_IRQn));
+  //HAL_NVIC_SetPriority((IRQn_Type)EXTI2_IRQn, 5, 0);
+	//HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI2_IRQn));
 }
 
 void BSP_BOOST_OVP_IRQHandler_Config(void)
@@ -573,8 +573,8 @@ void BSP_BOOST_OVP_IRQHandler_Config(void)
 	GPIO_InitStruct.Pin = BOOST_OCP_INT_PIN;
   HAL_GPIO_Init(BOOST_OCP_INT_PIN_GPIO_PORT, &GPIO_InitStruct);	 
   
-  HAL_NVIC_SetPriority((IRQn_Type)EXTI3_IRQn, 0, 6);
-	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI3_IRQn));
+  //HAL_NVIC_SetPriority((IRQn_Type)EXTI3_IRQn, 6, 0);
+	//HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI3_IRQn));
 }
 
 void BSP_KEY_IRQHandler_Config(void)
@@ -589,7 +589,7 @@ void BSP_KEY_IRQHandler_Config(void)
 	GPIO_InitStruct.Pin = KEY_PIN;
   HAL_GPIO_Init(KEY_PIN_GPIO_PORT, &GPIO_InitStruct);	 
   
-  HAL_NVIC_SetPriority((IRQn_Type)EXTI4_IRQn, 0, 7);
+  HAL_NVIC_SetPriority((IRQn_Type)EXTI4_IRQn, 7, 0);
 	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI4_IRQn));
 }
 
@@ -613,7 +613,7 @@ void	BSP_EXIT15_10_IRQHandler_Config(void)
 	GPIO_InitStruct.Pin = PHONE_ATTACHED_PIN;
   HAL_GPIO_Init(PHONE_ATTACHED_PIN_GPIO_PORT, &GPIO_InitStruct);  
   
-  HAL_NVIC_SetPriority((IRQn_Type)EXTI15_10_IRQn, 0, 8);
+  HAL_NVIC_SetPriority((IRQn_Type)EXTI15_10_IRQn, 8, 0);
 	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI15_10_IRQn));
 }
 
@@ -637,9 +637,10 @@ void BSP_IO_Config(PB_IO *io_ctrl)
 	HAL_GPIO_WritePin(BOOST_ENABLE_PIN_GPIO_PORT, 	BOOST_ENABLE_PIN,		io_ctrl->BOOST.ENABLE);
 	HAL_GPIO_WritePin(BOOST_9V_EN_PIN_GPIO_PORT, 		BOOST_9V_EN_PIN,		io_ctrl->BOOST.B9V_EN);
 	
+	HAL_GPIO_WritePin(CHG_PATH_EN_PIN_GPIO_PORT, 		CHG_PATH_EN_PIN,		io_ctrl->CHG_PATH_EN);
 }
 
-void BSP_IO_DEFAULT(void)
+void BSP_STANDBY(void)
 {
 	PB_IO io_ctrl;
 	
@@ -660,10 +661,11 @@ void BSP_IO_DEFAULT(void)
 	io_ctrl.BOOST.ENABLE				=GPIO_PIN_RESET;
 	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
 	
+	io_ctrl.CHG_PATH_EN					=GPIO_PIN_RESET;
 	BSP_IO_Config(&io_ctrl);	
 }
 
-void BSP_USB2SMB(void)
+void BSP_USB2PACK(void)
 {
 	PB_IO io_ctrl;
 	
@@ -684,10 +686,11 @@ void BSP_USB2SMB(void)
 	io_ctrl.BOOST.ENABLE				=GPIO_PIN_RESET;
 	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
 	
+	io_ctrl.CHG_PATH_EN					=GPIO_PIN_RESET;
 	BSP_IO_Config(&io_ctrl);	
 }
 
-void BSP_WLC2SMB(void)
+void BSP_USB2BOTH(void)
 {
 	PB_IO io_ctrl;
 	
@@ -698,16 +701,16 @@ void BSP_WLC2SMB(void)
 	
 	io_ctrl.PMUX1.MODE					=GPIO_PIN_SET;
 	io_ctrl.PMUX1.CTRL					=GPIO_PIN_SET;
-	io_ctrl.PMUX1.CHA_EN				=GPIO_PIN_RESET;
-	io_ctrl.PMUX1.CHB_EN				=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CHA_EN				=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CHB_EN				=GPIO_PIN_RESET;
 		
-	io_ctrl.PMUX2.MODE					=GPIO_PIN_RESET;
-	io_ctrl.PMUX2.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.MODE					=GPIO_PIN_SET;
+	io_ctrl.PMUX2.CHA_EN				=GPIO_PIN_SET;
 	io_ctrl.PMUX2.CHB_EN				=GPIO_PIN_RESET;
 	
 	io_ctrl.BOOST.ENABLE				=GPIO_PIN_RESET;
 	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
-	
+	io_ctrl.CHG_PATH_EN					=GPIO_PIN_RESET;
 	BSP_IO_Config(&io_ctrl);	
 }
 
@@ -731,10 +734,59 @@ void BSP_USB2PHONE(void)
 	
 	io_ctrl.BOOST.ENABLE				=GPIO_PIN_RESET;
 	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
-	
+	io_ctrl.CHG_PATH_EN					=GPIO_PIN_RESET;
 	BSP_IO_Config(&io_ctrl);	
 }
-void BSP_WLC2PHONE(void)
+
+void BSP_DCIN2PACK(void)
+{
+	PB_IO io_ctrl;
+	
+	io_ctrl.SMB.LPMODE_EN				=GPIO_PIN_SET;
+	io_ctrl.SMB.SUSP						=GPIO_PIN_SET;
+	io_ctrl.SMB.RST							=GPIO_PIN_SET;
+	io_ctrl.SMB.SMUX_SEL				=GPIO_PIN_RESET;
+	
+	io_ctrl.PMUX1.MODE					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CTRL					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX1.CHB_EN				=GPIO_PIN_SET;
+		
+	io_ctrl.PMUX2.MODE					=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHB_EN				=GPIO_PIN_RESET;
+	
+	io_ctrl.BOOST.ENABLE				=GPIO_PIN_RESET;
+	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
+	io_ctrl.CHG_PATH_EN					=GPIO_PIN_RESET;
+	BSP_IO_Config(&io_ctrl);	
+}
+
+void BSP_DCIN2BOTH(void)
+{
+	PB_IO io_ctrl;
+	
+	io_ctrl.SMB.LPMODE_EN				=GPIO_PIN_SET;
+	io_ctrl.SMB.SUSP						=GPIO_PIN_SET;
+	io_ctrl.SMB.RST							=GPIO_PIN_SET;
+	io_ctrl.SMB.SMUX_SEL				=GPIO_PIN_RESET;
+	
+	io_ctrl.PMUX1.MODE					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CTRL					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX1.CHB_EN				=GPIO_PIN_SET;
+		
+	io_ctrl.PMUX2.MODE					=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHB_EN				=GPIO_PIN_SET;
+	
+	io_ctrl.BOOST.ENABLE				=GPIO_PIN_RESET;
+	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
+	io_ctrl.CHG_PATH_EN					=GPIO_PIN_RESET;
+	BSP_IO_Config(&io_ctrl);	
+}
+
+void BSP_DCIN2PHONE(void)
 {
 	PB_IO io_ctrl;
 	
@@ -754,7 +806,7 @@ void BSP_WLC2PHONE(void)
 	
 	io_ctrl.BOOST.ENABLE				=GPIO_PIN_RESET;
 	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
-	
+	io_ctrl.CHG_PATH_EN					=GPIO_PIN_RESET;
 	BSP_IO_Config(&io_ctrl);	
 }
 
@@ -777,12 +829,33 @@ void BSP_BOOST2PHONE(uint8_t enable_9v)
 	io_ctrl.PMUX2.CHB_EN				=GPIO_PIN_RESET;
 	
 	io_ctrl.BOOST.ENABLE				=GPIO_PIN_SET;
+	io_ctrl.CHG_PATH_EN					=GPIO_PIN_RESET;
 	
-	if(enable_9v)
-	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_SET;
-	else
-	io_ctrl.BOOST.B9V_EN				=GPIO_PIN_RESET;
 	
+	BSP_IO_Config(&io_ctrl);	
+}
+
+void BSP_PHONE2PACK(void)
+{
+	PB_IO io_ctrl;
+	
+	io_ctrl.SMB.LPMODE_EN			=GPIO_PIN_SET;
+	io_ctrl.SMB.SUSP						=GPIO_PIN_SET;
+	io_ctrl.SMB.RST						=GPIO_PIN_SET;
+	io_ctrl.SMB.SMUX_SEL				=GPIO_PIN_RESET;
+	
+	io_ctrl.PMUX1.MODE					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CTRL					=GPIO_PIN_SET;
+	io_ctrl.PMUX1.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX1.CHB_EN				=GPIO_PIN_RESET;
+		
+	io_ctrl.PMUX2.MODE					=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHA_EN				=GPIO_PIN_RESET;
+	io_ctrl.PMUX2.CHB_EN				=GPIO_PIN_RESET;
+	
+	io_ctrl.BOOST.ENABLE				=GPIO_PIN_RESET;
+	
+	io_ctrl.CHG_PATH_EN					=GPIO_PIN_SET;
 	BSP_IO_Config(&io_ctrl);	
 }
 
@@ -882,7 +955,7 @@ void BSP_POWER_PACK_Init(void)
 	BSP_OUTPUT_GPIO_Init();
 	printf("GPIO init ok!\n\r");
 	
-	BSP_IO_DEFAULT();
+	BSP_STANDBY();
 	printf("Setting GPIO to default!\n\r");
 	
 	BSP_LED_Init();
@@ -902,7 +975,7 @@ void BSP_POWER_PACK_Init(void)
  	BSP_KEY_IRQHandler_Config();
 	printf("KEY init ok!\n\r");
 	
- 	//BSP_EXIT15_10_IRQHandler_Config();
+ 	BSP_EXIT15_10_IRQHandler_Config();
 	
 }
 

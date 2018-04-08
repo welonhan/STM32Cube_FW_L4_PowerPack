@@ -38,7 +38,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32l4xx_it.h"
-
+#include "cmsis_os.h"
 
 /** @addtogroup STM32L4xx_HAL_Examples
   * @{
@@ -57,6 +57,7 @@ extern I2C_HandleTypeDef 		I2cHandle;
 extern ADC_HandleTypeDef 		AdcHandle;
 extern DMA_HandleTypeDef 		DmaHandle;
 extern UART_HandleTypeDef 	UartHandle;
+extern osThreadId UART3Thread1_id, ADCThread2_id;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
@@ -129,11 +130,11 @@ void UsageFault_Handler(void)
   * @brief  This function handles SVCall exception.
   * @param  None
   * @retval None
-  */
+  
 void SVC_Handler(void)
 {
 }
-
+*/
 /**
   * @brief  This function handles Debug Monitor exception.
   * @param  None
@@ -147,10 +148,11 @@ void DebugMon_Handler(void)
   * @brief  This function handles PendSVC exception.
   * @param  None
   * @retval None
-  */
+  
 void PendSV_Handler(void)
 {
 }
+*/
 
 /**
   * @brief  This function handles SysTick Handler.
@@ -159,7 +161,8 @@ void PendSV_Handler(void)
   */
 void SysTick_Handler(void)
 {
-  HAL_IncTick();
+  //HAL_IncTick();
+	osSystickHandler();
 }
 
 /******************************************************************************/
@@ -178,6 +181,7 @@ void SysTick_Handler(void)
 void USART3_IRQHandler(void)
 {
   HAL_UART_IRQHandler(&UartHandle);
+	
 }
 
 /**
