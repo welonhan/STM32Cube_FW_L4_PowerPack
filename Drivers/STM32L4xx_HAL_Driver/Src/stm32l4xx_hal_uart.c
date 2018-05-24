@@ -978,7 +978,7 @@ HAL_StatusTypeDef HAL_UART_Receive_IT(UART_HandleTypeDef *huart, uint8_t *pData,
 #if defined(USART_CR1_FIFOEN)
       SET_BIT(huart->Instance->CR1, USART_CR1_PEIE | USART_CR1_RXNEIE_RXFNEIE);
 #else
-      SET_BIT(huart->Instance->CR1, USART_CR1_PEIE | USART_CR1_RXNEIE);
+      SET_BIT(huart->Instance->CR1, USART_CR1_PEIE | USART_CR1_RXNEIE );
 #endif
     }
     
@@ -1751,13 +1751,15 @@ void HAL_UART_IRQHandler(UART_HandleTypeDef *huart)
        && (   ((cr1its & USART_CR1_RXNEIE_RXFNEIE) != RESET)
            || ((cr3its & USART_CR3_RXFTIE) != RESET)) )
 #else
-    if(((isrflags & USART_ISR_RXNE) != RESET)
+    if((((isrflags & USART_ISR_RXNE) != RESET)
        && ((cr1its & USART_CR1_RXNEIE) != RESET))
+			||((isrflags & USART_ISR_RTOF) != RESET))
 #endif
     {
       if (huart->RxISR != NULL) {huart->RxISR(huart);}
       return;
     }
+		
   }  
   
   /* If some errors occur */
@@ -3231,6 +3233,28 @@ static void UART_RxISR_8BIT(UART_HandleTypeDef *huart)
       CLEAR_BIT(huart->Instance->CR1, (USART_CR1_RXNEIE_RXFNEIE | USART_CR1_PEIE));
 #else
       CLEAR_BIT(huart->Instance->CR1, (USART_CR1_RXNEIE | USART_CR1_PEIE));
+			//SET_BIT(huart->Instance->ICR, (USART_ICR_RTOCF));
+#endif
+      
+      /* Disable the UART Error Interrupt: (Frame error, noise error, overrun error) */
+      CLEAR_BIT(huart->Instance->CR3, USART_CR3_EIE);
+     
+      /* Rx process is completed, restore huart->RxState to Ready */
+      huart->RxState = HAL_UART_STATE_READY;
+      
+      /* Clear RxISR function pointer */
+      huart->RxISR = NULL;
+      
+      HAL_UART_RxCpltCallback(huart);
+    }
+		if((((huart->Instance->ISR) &( (uint32_t)(USART_ISR_RTOF)))!=0))
+    {
+      /* Disable the UART Parity Error Interrupt and RXNE interrupt*/
+#if defined(USART_CR1_FIFOEN)
+      CLEAR_BIT(huart->Instance->CR1, (USART_CR1_RXNEIE_RXFNEIE | USART_CR1_PEIE));
+#else
+      CLEAR_BIT(huart->Instance->CR1, (USART_CR1_RXNEIE | USART_CR1_PEIE));
+			SET_BIT(huart->Instance->ICR, (USART_ICR_RTOCF));
 #endif
       
       /* Disable the UART Error Interrupt: (Frame error, noise error, overrun error) */

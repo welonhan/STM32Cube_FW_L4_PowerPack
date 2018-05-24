@@ -1,8 +1,10 @@
 /**
   ******************************************************************************
-  * @file    GPIO/GPIO_IOToggle/Inc/main.h
+  * @file    PWR/PWR_ModesSelection/Src/stop1_mroff_rtc_test.c
   * @author  MCD Application Team
-  * @brief   Header for main.c module
+  * @brief   Main Interrupt Service Routines.
+  *          This file provides template for all exceptions handler and
+  *          peripherals interrupt service routine.
   ******************************************************************************
   * @attention
   *
@@ -33,47 +35,53 @@
   ******************************************************************************
   */
 
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __MAIN_H
-#define __MAIN_H
-
 /* Includes ------------------------------------------------------------------*/
-#include "stm32l4xx_hal.h"
-//#include "p9221.h"
-#include "smb1381.h"
-#include "power_pack.h"
+#include "main.h"
+#include <stdio.h>
 
-#include "FreeRTOS.h"
-#include "task.h"
-#include "timers.h"
-#include "queue.h"
-#include "semphr.h"
-#include "event_groups.h"
+/** @addtogroup STM32L4xx_HAL_Examples
+  * @{
+  */
 
+/** @addtogroup PWR_ModesSelection
+  * @{
+  */
 
-#define __PACK_BSP_VERSION_MAIN   (0x01) /*!< [31:24] main version */
-#define __PACK_BSP_VERSION_SUB   	(0x00) /*!< [23:16] sub1 version */
+/* Private typedef -----------------------------------------------------------*/
+/* Private define ------------------------------------------------------------*/
+/* Private macro -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
+/* Private functions ---------------------------------------------------------*/
 
-#define __PACK_BSP_VERSION        ((__PACK_BSP_VERSION_MAIN << 8)\
-                                                 |(__PACK_BSP_VERSION_SUB))
-                                            
-																								 
-/* Exported types ------------------------------------------------------------*/
-typedef struct
+void test_stop1_mroff_rtc(void)
 {
-	uint8_t 	ATTACH;
-	uint8_t 	USB;
-	uint8_t 	DCIN;
-	uint8_t		PHONE_USB;
-	uint8_t 	PHONE_SOC;
-	uint8_t 	PACK_SOC;
-	uint16_t	PHONE_USB_VOLTAGE;
-}PACK_INFO;
+  printf("\n\r Executing test (STOP1 + MR OFF + RTC) \n\r");
+  printf(" Please measure current then use Reset button to select another test \n\r");
 
-/* Exported constants --------------------------------------------------------*/
-/* Exported macro ------------------------------------------------------------*/
-/* Exported functions ------------------------------------------------------- */
+  /* set RTC clock */
+  /*     we do not set the interrupt on RTC clock since we do not want to wakeup from STOP*/
+  /*     we want to stay in STOP 1 mode with RTC clock activated for power conso */
+  RTC_Config();
+  
+  /* Set all GPIO in analog state to reduce power consumption */
+  GPIO_AnalogState_Config();
+  
+  /* Enable Power Clock */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  
+  /* Enter STOP 1 mode (Main Regulator OFF and Low Power Regulator On) */
+  HAL_PWREx_EnterSTOP1Mode(PWR_STOPENTRY_WFI);
+  
+}
 
-#endif /* __MAIN_H */
+
+/**
+  * @}
+  */
+
+/**
+  * @}
+  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

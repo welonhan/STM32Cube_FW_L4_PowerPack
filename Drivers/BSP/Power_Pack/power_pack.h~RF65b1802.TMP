@@ -124,7 +124,7 @@
  //#define PMUX1_CHA_EN_PIN                  GPIO_PIN_8
  //#define PMUX1_CHB_EN_PIN                  GPIO_PIN_9
  //#define ACC_UART3_TX_PIN                  GPIO_PIN_10
- #define PHONE_ATTACHED_PIN                  GPIO_PIN_10
+ #define PHONE_ATTACHED_PIN                  GPIO_PIN_11
  //#define FG_INT_PIN                        GPIO_PIN_12
  #define LED4_PIN                            GPIO_PIN_13
  #define WLC_INT_PIN                		     GPIO_PIN_14
@@ -224,7 +224,7 @@
  /* Size of Trasmission buffer */
  #define TXBUFFERSIZE                      (COUNTOF(aTxBuffer) - 1)
  /* Size of Reception buffer */
-// #define RXBUFFERSIZE                      TXBUFFERSIZE
+ #define RXBUFFERSIZE                      TXBUFFERSIZE
 
 /*##################### LED ###################################*/
  typedef enum

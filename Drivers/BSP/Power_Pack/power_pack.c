@@ -406,13 +406,15 @@ void BSP_UART3_Init(void)
   UartHandle.Init.Parity     = UART_PARITY_NONE;
   UartHandle.Init.HwFlowCtl  = UART_HWCONTROL_NONE;
   UartHandle.Init.Mode       = UART_MODE_TX_RX;
+	//UARTHandle.Init.OverSampling = UART_OVERSAMPLING_16;
+  //UARTHandle.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
   if(HAL_UART_DeInit(&UartHandle) != HAL_OK)
   {
     //Error_Handler();
   }  
   if(HAL_UART_Init(&UartHandle) != HAL_OK)
   {
-    //Error_Handler();
+    printf("uart3 init error\n\r");
   }	
 }
 
@@ -610,10 +612,11 @@ void	BSP_EXIT15_10_IRQHandler_Config(void)
 	GPIO_InitStruct.Pin = WLC_INT_PIN;
   HAL_GPIO_Init(WLC_INT_PIN_GPIO_PORT, &GPIO_InitStruct);
 	
+	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
 	GPIO_InitStruct.Pin = PHONE_ATTACHED_PIN;
   HAL_GPIO_Init(PHONE_ATTACHED_PIN_GPIO_PORT, &GPIO_InitStruct);  
   
-  HAL_NVIC_SetPriority((IRQn_Type)EXTI15_10_IRQn, 8, 0);
+  HAL_NVIC_SetPriority((IRQn_Type)EXTI15_10_IRQn, 12, 0);
 	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI15_10_IRQn));
 }
 

@@ -610,14 +610,14 @@ void xPortSysTickHandler( void )
 			should not be executed again.  However, the original expected idle
 			time variable must remain unmodified, so a copy is taken. */
 			xModifiableIdleTime = xExpectedIdleTime;
-			configPRE_SLEEP_PROCESSING( &xModifiableIdleTime );
+			configPRE_SLEEP_PROCESSING( (uint32_t)(&xModifiableIdleTime) );
 			if( xModifiableIdleTime > 0 )
 			{
 				__dsb( portSY_FULL_READ_WRITE );
 				__wfi();
 				__isb( portSY_FULL_READ_WRITE );
 			}
-			configPOST_SLEEP_PROCESSING( &xExpectedIdleTime );
+			configPOST_SLEEP_PROCESSING( (uint32_t)(&xModifiableIdleTime) );
 
 			/* Stop SysTick.  Again, the time the SysTick is stopped for is
 			accounted for as best it can be, but using the tickless mode will

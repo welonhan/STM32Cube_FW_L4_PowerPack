@@ -80,19 +80,24 @@
  *----------------------------------------------------------*/
 
 /* Ensure stdint is only used by the compiler, and not the assembler. */
+//#include "portmacro.h"
+
 #if defined(__ICCARM__) || defined(__CC_ARM) || defined(__GNUC__)
  #include <stdint.h>
  extern uint32_t SystemCoreClock;
+ extern void OS_PreSleepProcessing(uint32_t vParameters);
+ extern void OS_PostSleepProcessing(uint32_t vParameters);
 #endif
+
 
 #define configUSE_PREEMPTION                    1
 #define configUSE_IDLE_HOOK                     0
 #define configUSE_TICK_HOOK                     0
-#define configCPU_CLOCK_HZ                      ( SystemCoreClock )
+#define configCPU_CLOCK_HZ                      ( ( TickType_t ) 80000000 )
 #define configTICK_RATE_HZ                      ( ( TickType_t ) 1000 )
 #define configMAX_PRIORITIES                    ( 7 )
 #define configMINIMAL_STACK_SIZE                ( ( uint16_t ) 128 )
-#define configTOTAL_HEAP_SIZE                   ( ( size_t ) ( 10 * 1024 ) )
+#define configTOTAL_HEAP_SIZE                   ( ( size_t ) ( 20 * 1024 ) )
 #define configMAX_TASK_NAME_LEN                 ( 16 )
 #define configUSE_TRACE_FACILITY                1
 #define configUSE_16_BIT_TICKS                  0
@@ -105,6 +110,11 @@
 #define configUSE_APPLICATION_TASK_TAG          0
 #define configUSE_COUNTING_SEMAPHORES           1
 #define configGENERATE_RUN_TIME_STATS           0
+
+#define configUSE_TICKLESS_IDLE     						0
+
+#define configPRE_SLEEP_PROCESSING(x)  OS_PreSleepProcessing(x)
+#define configPOST_SLEEP_PROCESSING(x) OS_PostSleepProcessing(x)
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                   0
@@ -162,6 +172,7 @@ header file. */
    standard names. */
 #define vPortSVCHandler    SVC_Handler
 #define xPortPendSVHandler PendSV_Handler
+#define xPortSysTickHandler SysTick_Handler
 
 /* IMPORTANT: This define MUST be commented when used with STM32Cube firmware,
               to prevent overwriting SysTick_Handler defined within STM32Cube HAL */

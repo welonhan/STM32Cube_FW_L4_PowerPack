@@ -39,7 +39,40 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include <stdio.h>
-#include "cmsis_os.h"
+#include "string.h"
+
+#ifdef __GNUC__
+  /* With GCC, small printf (option LD Linker->Libraries->Small printf
+     set to 'Yes') calls __io_putchar() */
+  #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#else
+  #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif /* __GNUC__ */
+
+#define RXCOMMANDSIZE   0x20
+#define RXBUFFERSIZE   0x20
+#define LR_ASCII_VALUE ((uint8_t)0x0A)
+#define CR_ASCII_VALUE ((uint8_t)0x0D)
+#define SPACE_ASCII_VALUE ((uint8_t)0x20)
+
+//#define __UART_FIXED_CMD_LENGTH
+	
+char RxCommand[RXCOMMANDSIZE];
+char PbCommand[RXCOMMANDSIZE];
+uint8_t RxBuffer[RXBUFFERSIZE] = {0}; //transmitting byte per byte
+
+char 	temp; //initialisation character
+char * s;	
+
+__IO uint8_t RxDataNumber=0; 
+__IO uint16_t RxData1=0;
+__IO uint16_t RxData2=0;
+
+__IO uint8_t ReceiveStatus = 0;
+__IO uint16_t RxCmdCounter = 0;
+__IO uint8_t ReadyToReception = 0;
+__IO uint8_t CmdEnteredOk  = 0;
+__IO uint8_t uart3_packet_end =0;
 
 //#define I2C_TIMING      0x0020098E
 
@@ -53,7 +86,7 @@ ADC_ChannelConfTypeDef        sConfig;
 uint16_t   										aADCxConvertedData[4];
 
 UART_HandleTypeDef 						UartHandle;
-__IO ITStatus UartReady = RESET;
+__IO ITStatus 								UartReady = RESET;
 
 DMA_HandleTypeDef         		DmaHandle;
 
@@ -68,6 +101,7 @@ void SystemClock_Config(void);
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 void ADC_Data_Handle(void);
+void set_pack_status(PACK_INFO *rptr);
 
 uint8_t p9221_id[2];
 uint8_t	p9221_fw_revision[4];
@@ -78,9 +112,6 @@ uint8_t reg_add_h,reg_add_l,reg_data,prefix;
 uint16_t reg_add16;
 
 uint8_t aRxBuffer[5];
-
-osMailQDef (mail_pool_q, 5, PACK_INFO);  // Declare mail queue
-osMailQId  (mail_pool_q_id);              // Mail queue ID
 
 PACK_INFO pack_info;
 
@@ -109,12 +140,25 @@ typedef enum
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-osThreadId UART3Thread1_id, ADCThread2_id, CHARGINGThread3_id;
+TaskHandle_t UART3_handle, ADC_handle, CHARGING_handle;
+	
 /* Private function prototypes -----------------------------------------------*/
-static void UART3_Thread1(void const *argument);
-static void ADC_Thread2(void const *argument);
-static void CHARGING_Thread3(void const *argument);
+static void UART3_task1(void const *argument);
+static void ADC_task2(void const *argument);
+static void CHG_task3(void const *argument);
+
+static xSemaphoreHandle xSemaphore_uart3_int;
+static xQueueHandle xQueue_pack_info;
 PACK_STATUS get_pack_status(PACK_INFO *ptr);
+
+static void SYSCLKConfig_STOP(void);
+void DecodeReception(void);
+void pbfw(void);
+void pbsoc(uint8_t soc);
+void pbphsoc(uint8_t soc);
+void pbusb(uint16_t usb_vol);
+void pbwr(uint16_t addr, uint16_t data);
+void pbrd(uint16_t addr);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -135,9 +179,10 @@ int main(void)
        - Set NVIC Group Priority to 4
        - Low Level Initialization
      */
-  HAL_Init();
-	
-	//HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_0);
+	//disable interrupt
+	__set_PRIMASK(1);		
+  
+	HAL_Init();
 
   /* Configure the system clock to 80 MHz */
   SystemClock_Config();
@@ -155,31 +200,35 @@ int main(void)
 	pack_info.PACK_SOC=0;
 	pack_info.PHONE_SOC=0;	
 	
-	//ADC_Data_Handle();
-	//printf("*****\n\rVDDA:%dmV\n\rUSB VOLTAGE:%dmV\n\rDC VOLTAGE:%dmV\n\rCHG VOLTAGE:%dmV\n\r",vdda,usb_in_voltage,dc_in_voltage,chg_out_voltage);
+	if(HAL_GPIO_ReadPin(PHONE_ATTACHED_PIN_GPIO_PORT,PHONE_ATTACHED_PIN))
+	{
+		pack_info.ATTACH=0;
+		printf("phone detached!!\n\r");
+	}
+	else
+	{
+		pack_info.ATTACH=1;
+		printf("phone attached!!\n\r");
+	}
+	set_pack_status(&pack_info);
 	
-  /* Thread 1 definition */
-  osThreadDef(THREAD_1, UART3_Thread1, osPriorityNormal, 0, 1024);
+	/* Enable Power Clock */
+  __HAL_RCC_PWR_CLK_ENABLE();
   
-  /* Thread 2 definition */
-  osThreadDef(THREAD_2, ADC_Thread2, osPriorityNormal, 0, 1024);
-  
-	/* Thread 3 definition */
-  osThreadDef(THREAD_3, CHARGING_Thread3, osPriorityNormal, 0, 1024);
+  /* Ensure that MSI is wake-up system clock */ 
+  __HAL_RCC_WAKEUPSTOP_CLK_CONFIG(RCC_STOP_WAKEUPCLOCK_MSI);
 	
-  /* Start thread 1 */
-  UART3Thread1_id = osThreadCreate(osThread(THREAD_1), NULL);
-
-  /* Start thread 2 */
-  ADCThread2_id = osThreadCreate(osThread(THREAD_2), NULL);  
-
-	/* Start thread 3 */
-	CHARGINGThread3_id = osThreadCreate(osThread(THREAD_3), NULL); 
-  
-	mail_pool_q_id = osMailCreate(osMailQ(mail_pool_q), NULL);
+	//UART3_task1(&temp);
 	
+	xQueue_pack_info = xQueueCreate( 5, sizeof( PACK_INFO ) );  
+	
+	
+  xTaskCreate((TaskFunction_t)UART3_task1,		"task1",3000,NULL,6,	UART3_handle );
+	xTaskCreate((TaskFunction_t)ADC_task2,			"task2",300,NULL,6,	ADC_handle );
+	xTaskCreate((TaskFunction_t)CHG_task3,			"task3",300,NULL,2,	CHARGING_handle );
+		
   /* Start scheduler */
-  osKernelStart();
+  vTaskStartScheduler();
 
   /* We should never get here as control is now taken by the scheduler */
   for (;;);
@@ -253,9 +302,7 @@ void SystemClock_Config(void)
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
   /* Set transmission flag: transfer complete */
-  UartReady = SET;
-
-  
+  UartReady = SET;  
 }
 
 /**
@@ -267,9 +314,22 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
   */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
-  /* Set transmission flag: transfer complete */
-  UartReady = SET; 
-	osSignalSet (UART3Thread1_id, 0);
+  ReadyToReception = 1;
+	/* Set transmission flag: transfer complete */
+	static portBASE_TYPE xHigherPriorityTaskWoken=pdFALSE;
+	
+  //UartReady = SET; 
+	if((xSemaphoreGiveFromISR( xSemaphore_uart3_int, &xHigherPriorityTaskWoken))!=pdPASS)
+		printf("UART IRQ error\n\r");	
+	ReceiveStatus=1;
+	/*
+	if(((UartHandle->Instance->ISR) &( (uint32_t)(USART_ISR_RTOF)))!=0)
+	{	
+		ReceiveStatus=1;
+		//CLEAR_BIT(UartHandle->Instance->CR1, (USART_CR1_IDLEIE));
+		SET_BIT(UartHandle->Instance->ICR, (USART_ICR_RTOCF));
+	}
+	*/
 }
 
 
@@ -280,7 +340,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
   */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-  PACK_INFO *mptr;
+  portBASE_TYPE xStatus;
+	static portBASE_TYPE *xHigherPriorityTaskWoken=pdFALSE;
 	
 	if (GPIO_Pin == SMB_CC_STS_PIN)
   {
@@ -310,26 +371,29 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   {
     //HAL_Delay(10);
 		BSP_LED_Toggle(LED2);
+		printf("key pressed!!\n\r");
   }
 
   else if (GPIO_Pin == PHONE_ATTACHED_PIN)
   {
     /* Toggle LED2 */
     BSP_LED_Toggle(LED2);
+		//printf("phone attach pin int!!\n\r");
 		if(HAL_GPIO_ReadPin(PHONE_ATTACHED_PIN_GPIO_PORT,PHONE_ATTACHED_PIN))
-			pack_info.ATTACH=1;
-		else
+		{
 			pack_info.ATTACH=0;
-		mptr = osMailAlloc(mail_pool_q_id, osWaitForever);       	// Allocate memory  
-	
-		mptr->ATTACH		=pack_info.ATTACH;
-		mptr->USB				=pack_info.USB;
-		mptr->DCIN			=pack_info.DCIN;
-		mptr->PACK_SOC	=pack_info.PACK_SOC;
-		mptr->PHONE_SOC	=pack_info.PHONE_SOC;
-		mptr->PHONE_USB_VOLTAGE	=pack_info.PHONE_USB_VOLTAGE;
-		osMailPut(mail_pool_q_id, mptr);                         	// Send Mail
-		
+			printf("phone detached!!\n\r");
+		}
+		else
+		{
+			pack_info.ATTACH=1;
+			printf("phone attached!!\n\r");
+		}
+		xStatus=xQueueSendToBackFromISR( xQueue_pack_info, &pack_info, xHigherPriorityTaskWoken );
+			if( xStatus != pdPASS )
+			{
+				printf("Send to queue error!\n\r");	
+			}		
   }
 
   else if (GPIO_Pin == FG_INT_PIN)
@@ -345,34 +409,88 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   }
 }
 
+#ifndef __UART_FIXED_CMD_LENGTH
 /**
   * @brief  UART3 thread 1
   * @param  thread not used
   * @retval None
   */
-static void UART3_Thread1(void const *argument)
+static void UART3_task1(void const *argument)
 {
-  //uint32_t count = 0;
+	(void) argument;
+  
+	portBASE_TYPE xStatus;
+	uint16_t xTicksToWait=100 / portTICK_RATE_MS;
+	xSemaphore_uart3_int = xSemaphoreCreateBinary( );
+	if(xSemaphore_uart3_int==NULL)
+			printf("xSemaphore create fail\n\r");
+	for(;;)
+	{
+		//while (CmdEnteredOk != 0x1) 
+		//{
+			ReceiveStatus = 0;
+			SET_BIT(UartHandle.Instance->CR2, USART_CR2_RTOEN);	//receiver timeout enable
+			SET_BIT(UartHandle.Instance->CR1, USART_CR1_RTOIE);	//receiver timeout interrupt enable
+			UartHandle.Instance->RTOR=0x00000016;							//22x bit duration
+			while (ReceiveStatus != 0x1)
+			{
+				//CLEAR_BIT(UartHandle.Instance->CR1, USART_CR1_TE);
+				//SET_BIT(UartHandle.Instance->ICR, (USART_ICR_IDLECF));
+				/* Start the USART2 Receive process to receive the RxBuffer */
+				if(HAL_UART_Receive_IT(&UartHandle, RxBuffer, RXBUFFERSIZE) != HAL_OK)
+				{
+					 printf("uart int error\n\r");
+				}
+				xSemaphoreTake( xSemaphore_uart3_int, portMAX_DELAY );	
+				//RxCommand[RxCmdCounter] = (char) RxBuffer[0];
+				//RxCmdCounter++;	
+/*			
+				if(RxCmdCounter==1)
+				{
+					SET_BIT(UartHandle.Instance->CR2, USART_CR2_RTOEN);	//receiver timeout enable
+					SET_BIT(UartHandle.Instance->CR1, USART_CR1_RTOIE);	//receiver timeout interrupt enable
+					UartHandle.Instance->RTOR=0x00000016;							//22x bit duration
+				}
+*/				
+			}
+			//SET_BIT(UartHandle.Instance->CR1, USART_CR1_TE);
+			DecodeReception();
+		  //CmdEnteredOk = 1;
+      s = PbCommand;
+      
+      if (strcmp(s, "pbfw") == 0){pbfw();}
+      else if (strcmp(s, "pbsoc") == 0) {pbsoc(RxData1);}
+      else if (strcmp(s, "pbphsoc") == 0) {pbphsoc(RxData1);}
+      else if (strcmp(s, "pbusb") == 0) {pbusb(RxData1);}
+      else if (strcmp(s, "pbwr") == 0) {pbwr(RxData1,RxData2);}
+      else if (strcmp(s, "pbrd") == 0) {pbrd(RxData1);}
+      else {
+         printf("Invalid command.. Please enter again\n\r");
+         CmdEnteredOk = 0;
+         /* Reset received test number array */
+         memset(RxCommand, 0, RXCOMMANDSIZE);
+       }
+    }
+	//}
+}
+#else	
+static void UART3_task1(void const *argument)
+{
   (void) argument;
-  PACK_INFO *mptr;
-	osEvent evt;
-	
-  for (;;)
+  
+	portBASE_TYPE xStatus;
+	uint16_t xTicksToWait=100 / portTICK_RATE_MS;
+	xSemaphore_uart3_int = xSemaphoreCreateBinary( );
+	if(xSemaphore_uart3_int==NULL)
+			printf("xSemaphore create fail\n\r");
+	for (;;)
   {
 		if(HAL_UART_Receive_IT(&UartHandle, (uint8_t *)aRxBuffer, 5) != HAL_OK)
 		{
-			printf("UART Error\n\r");
-		}
-		evt=osSignalWait(0,osWaitForever );
-		/*##-3- Wait for the end of the transfer ###################################*/   
+				printf("UART receive IT Error\n\r");
+		}			
+		xSemaphoreTake( xSemaphore_uart3_int, portMAX_DELAY );				
 		
-//		while (UartReady != SET)
-//		{
-//		}
-		if(evt.status==osEventSignal){
-		/* Reset transmission flag */
-		UartReady = RESET;
-		//osSignalClear(UART3Thread1_id,0);
 		if((aRxBuffer[0]==0xAA)&&aRxBuffer[1]==0x0E)//write registor
 		{
 			reg_add16=(uint16_t)(aRxBuffer[2]<<8)+(uint16_t)aRxBuffer[3];
@@ -399,14 +517,12 @@ static void UART3_Thread1(void const *argument)
 		{				
 			pack_info.PHONE_SOC=((uint16_t)(aRxBuffer[2]<<8)+aRxBuffer[3]);
 			printf("PHONE SOC:%d\n\r",pack_info.PHONE_SOC);	
-			mptr = osMailAlloc(mail_pool_q_id, osWaitForever);       	// Allocate memory  
-			mptr->ATTACH		=pack_info.ATTACH;
-			mptr->USB				=pack_info.USB;
-			mptr->DCIN			=pack_info.DCIN;
-			mptr->PACK_SOC	=pack_info.PACK_SOC;
-			mptr->PHONE_SOC	=pack_info.PHONE_SOC;	
-			osMailPut(mail_pool_q_id, mptr);                         	// Send Mail
-			osThreadYield();
+			
+			xStatus=xQueueSendToBack( xQueue_pack_info, &pack_info, xTicksToWait );
+			if( xStatus != pdPASS )
+			{
+				printf("Send to queue error!\n\r");	
+			}
 		}
 		else if((aRxBuffer[0]==0xAA)&&aRxBuffer[1]==0x03)//info phone usb voltage
 		{				
@@ -416,21 +532,17 @@ static void UART3_Thread1(void const *argument)
 			else
 				pack_info.PHONE_USB=0;
 			printf("PHONE USB VOLTAGE:%dmV\n\r",pack_info.PHONE_USB_VOLTAGE);	
-			mptr = osMailAlloc(mail_pool_q_id, osWaitForever);       	// Allocate memory  
-			mptr->ATTACH		=pack_info.ATTACH;
-			mptr->USB				=pack_info.USB;
-			mptr->DCIN			=pack_info.DCIN;
-			mptr->PACK_SOC	=pack_info.PACK_SOC;
-			mptr->PHONE_USB	=pack_info.PHONE_USB;
-			mptr->PHONE_USB_VOLTAGE	=pack_info.PHONE_USB_VOLTAGE;
-			osMailPut(mail_pool_q_id, mptr);  
-			osThreadYield();			
+			xStatus=xQueueSendToBack( xQueue_pack_info, &pack_info, xTicksToWait );
+			if( xStatus != pdPASS )
+			{
+				printf("Send to queue error!\n\r");	
+			}
 		}    
-  }
+  }	
 }
-}
+#endif
 
-static void ADC_Thread2(void const *argument)
+static void ADC_task2(void const *argument)
 {
 	uint32_t vrefint_data,vrefint_cal;
 	vrefint_cal=(uint32_t)(*VREFINT_CAL_ADDR);
@@ -443,35 +555,249 @@ static void ADC_Thread2(void const *argument)
 		usb_in_voltage=(vdda*aADCxConvertedData[0])/4096;
 		dc_in_voltage=(vdda*aADCxConvertedData[1])/4096;
 		chg_out_voltage=(vdda*aADCxConvertedData[2])/4096;
-		printf("vdda=%dmV\n\r",vdda);
-		osDelay(2000);
-		osThreadYield();
+		//printf("vdda=%dmV\n\r",vdda);
+		vTaskDelay(1000);
 	}
 }
 
-static void CHARGING_Thread3(void const *argument)
+static void CHG_task3(void const *argument)
 {
-	PACK_INFO *rptr;
-	osEvent  evt;
-	PACK_STATUS status;
-  for(;;)
+	PACK_INFO rptr;
+	portBASE_TYPE xStatus;
+	//PACK_STATUS status;
+	for(;;)
 	{
-		evt = osMailGet(mail_pool_q_id, 1000); 
-		if (evt.status == osEventMail) 
+		xStatus=xQueueReceive( xQueue_pack_info, &rptr, portMAX_DELAY );
+		if (xStatus == pdPASS) 
 		{
-			rptr=evt.value.p;
-			printf("Attach:%d\n\r",rptr->ATTACH);
-			printf("USB:%d\n\r",rptr->USB);
-			printf("DCIN:%d\n\r",rptr->DCIN);
-			printf("PHONE_USB:%d\n\r",rptr->PHONE_USB);
-			printf("USB_VOL:%d\n\r",rptr->PHONE_USB_VOLTAGE);
-			printf("PHONE SOC:%d\n\r",rptr->PHONE_SOC);
-			printf("PACK SOC:%d\n\r",rptr->PACK_SOC);
-			status=get_pack_status(rptr);
-			osMailFree(mail_pool_q_id, rptr);
+			set_pack_status(&rptr);
+						
+		}
+	}
+}
+
+/**
+  * @brief  Decode recpeption of RBuffer
+  * @param  None
+  * @retval None
+  */
+void DecodeReception(void)
+{
+	uint16_t i;
+	char temp;
+	
+	uint8_t d1_hex=0;
+	uint8_t d2_hex=0;
+	for(i=0;i<RXCOMMANDSIZE;i++)
+	{	
+		PbCommand[i]=0;
+		RxCommand[i]=0;
+	}
+	RxDataNumber=0;
+	RxData1=0;
+	RxData2=0;
+	
+	for(i=0;RxBuffer[i]!=CR_ASCII_VALUE;i++)
+	{
+		temp=RxBuffer[i];
 		
+		if(temp != SPACE_ASCII_VALUE)
+		{
+			RxCommand[i]=temp;
+		}
+		else
+		{
+			RxDataNumber++;
+			if(RxDataNumber==1)
+			{
+				strcpy(PbCommand,RxCommand);
+			}
+		}
 		
-		switch(status){
+		if(RxDataNumber>0)
+		{
+			if((temp>='0')&&(temp<='9'))
+			{
+				if(RxDataNumber==1)
+				{
+					if(d1_hex==1)
+						RxData1=(RxData1<<4)+(temp-0x30);
+					else
+						RxData1=(RxData1*10)+(temp-0x30);
+					
+				}
+				else if(RxDataNumber==2)
+				{
+					if(d2_hex==1)
+						RxData2=(RxData2<<4)+(temp-0x30);
+					else
+						RxData2=(RxData2*10)+(temp-0x30);
+				}	
+			}
+			else if(temp=='x')
+			{
+				if(RxDataNumber==1)
+				{
+					RxData1=0;
+					d1_hex=1;					
+				}
+				else if(RxDataNumber==2)
+				{
+					RxData2=0;
+					d2_hex=1;					
+				}	
+			}
+			else if((temp>='a')&&(temp<='f'))
+			{
+				if(RxDataNumber==1)
+				{
+					RxData1=(RxData1<<4)+(temp-0x57);
+				}				
+				else if(RxDataNumber==2)
+				{
+					RxData2=(RxData2<<4)+(temp-0x57);
+					
+				}	
+			}
+		}
+	}
+	if(RxDataNumber==0)
+			strcpy(PbCommand,RxCommand);
+	
+	printf(PbCommand);
+	if(RxDataNumber==1)
+	{
+		if(d1_hex==1)
+			printf(" 0x%x",RxData1);
+		else
+			printf(" %d",RxData1);
+	}
+	else if(RxDataNumber==2)
+	{	
+		if(d2_hex==1)
+			printf(" 0x%x 0x%x",RxData1,RxData2);
+		else
+			printf(" %d %d",RxData1,RxData2);
+	}
+	printf("\n\r");
+
+}
+
+void pbfw(void)
+{
+	printf("PACK firmware version:%x\n\r",__PACK_BSP_VERSION);
+}
+
+void pbsoc(uint8_t soc)
+{
+	portBASE_TYPE xStatus;
+	uint16_t xTicksToWait=100 / portTICK_RATE_MS;
+	pack_info.PACK_SOC=soc;
+	printf("PACK soc:%d\n\r",pack_info.PACK_SOC);
+	xStatus=xQueueSendToBack( xQueue_pack_info, &pack_info, xTicksToWait );
+	if( xStatus != pdPASS )
+	{
+		printf("Send to queue error!\n\r");	
+	}
+}
+
+void pbphsoc(uint8_t soc)
+{
+	
+	portBASE_TYPE xStatus;
+	uint16_t xTicksToWait=100 / portTICK_RATE_MS;
+	pack_info.PHONE_SOC=soc;
+	printf("PHONE soc:%d\n\r",pack_info.PHONE_SOC);
+			
+	xStatus=xQueueSendToBack( xQueue_pack_info, &pack_info, xTicksToWait );
+	if( xStatus != pdPASS )
+	{
+		printf("Send to queue error!\n\r");	
+	}
+}
+
+void pbusb(uint16_t usb_vol)
+{
+	portBASE_TYPE xStatus;
+	uint16_t xTicksToWait=100 / portTICK_RATE_MS;
+	pack_info.PHONE_USB=1;
+	pack_info.PHONE_USB_VOLTAGE=usb_vol;
+	if(pack_info.PHONE_USB_VOLTAGE)
+		pack_info.PHONE_USB=1;
+	else
+		pack_info.PHONE_USB=0;
+	printf("PHONE USB VOLTAGE:%dmV\n\r",pack_info.PHONE_USB_VOLTAGE);	
+	xStatus=xQueueSendToBack( xQueue_pack_info, &pack_info, xTicksToWait );
+	if( xStatus != pdPASS )
+	{
+		printf("Send to queue error!\n\r");	
+	}
+}
+
+void pbwr(uint16_t addr, uint16_t data)
+{
+	printf("Write reg_add16:0x%x,reg_data=0x%x\n\r",addr,data);
+	if((BSP_I2C2_Write(SMB_ADDRESS, addr, I2C_MEMADD_SIZE_16BIT, data))!=HAL_OK)
+		printf("SBM1381 setting error!\n\r");		
+}
+
+void pbrd(uint16_t addr)
+{
+	uint8_t data;
+	data=BSP_I2C2_Read(SMB_ADDRESS, addr, I2C_MEMADD_SIZE_16BIT);
+	printf("Read reg_add16:0x%x,reg_data=0x%x\n\r",addr,data);	
+}
+
+
+/**
+  * @brief  Retargets the C library printf function to the UART.
+  * @param  None
+  * @retval None
+  */
+PUTCHAR_PROTOTYPE
+{
+  /* Place your implementation of fputc here */
+  /* e.g. write a character to the EVAL_COM1 and Loop until the end of transmission */
+  HAL_UART_Transmit(&UartHandle, (uint8_t *)&ch, 1, 0xFFFF); 
+
+  return ch;
+}
+
+PACK_STATUS get_pack_status(PACK_INFO *ptr)
+{
+	
+	if((ptr->ATTACH==0)&&	(ptr->USB==0)&&(ptr->DCIN==0))
+		status_pack=STATUS_STANDBY;
+	else if((ptr->ATTACH==1)&&	(ptr->USB==0)&&(ptr->DCIN==0)&&(ptr->PHONE_USB==0)&&(ptr->PHONE_SOC==0))		//test only
+		status_pack=STATUS_USB2PACK;
+	else if((ptr->ATTACH==0)&&	(ptr->USB==1))
+		status_pack=STATUS_USB2PACK;
+	else if((ptr->ATTACH==1)&&	(ptr->USB==1)&&(ptr->PHONE_USB==1))
+		status_pack=STATUS_USB2PACK;
+	else if((ptr->ATTACH==1)&&	(ptr->USB==1)&&(ptr->PHONE_USB==0)&&(ptr->PHONE_SOC>=90))
+		status_pack=STATUS_USB2BOTH;
+	else if((ptr->ATTACH==1)&&	(ptr->USB==1)&&(ptr->DCIN==0)&&(ptr->PHONE_USB==0)&&(ptr->PHONE_SOC<90))
+		status_pack=STATUS_USB2PHONE;
+	else if((ptr->ATTACH==0)&&	(ptr->USB==1)&&(ptr->DCIN==1))
+		status_pack=STATUS_DCIN2PACK;
+	else if((ptr->ATTACH==1)&&	(ptr->USB==0)&&(ptr->DCIN==1)&&(ptr->PHONE_USB==0)&&(ptr->PHONE_SOC>=90))
+		status_pack=STATUS_DCIN2BOTH;
+	else if((ptr->ATTACH==1)&&	(ptr->USB==0)&&(ptr->DCIN==1)&&(ptr->PHONE_USB==0)&&(ptr->PHONE_SOC<90))
+		status_pack=STATUS_DCIN2PHONE;
+	else if((ptr->ATTACH==1)&&	(ptr->USB==0)&&(ptr->DCIN==0)&&(ptr->PHONE_USB==0)&&(ptr->PACK_SOC>2))
+		status_pack=STATUS_BOOST2PHONE;
+	else if((ptr->ATTACH==1)&&	(ptr->USB==0)&&(ptr->DCIN==0)&&(ptr->PHONE_USB==1)&&(ptr->PHONE_SOC>90))
+		status_pack=STATUS_PHONE2PACK;
+	return status_pack;
+}
+
+void set_pack_status(PACK_INFO *rptr)
+{
+	PACK_STATUS status;
+	printf("Attach\tUSB\tDCIN\tPHONE_USB\tUSB_VOL\tPHONE_SOC\tPACK_SOC\n\r");
+	printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\t\n\r",rptr->ATTACH,rptr->USB,rptr->DCIN,rptr->PHONE_USB,rptr->PHONE_USB_VOLTAGE,rptr->PHONE_SOC,rptr->PACK_SOC);
+	status=get_pack_status(rptr);		
+	switch(status){
 			case STATUS_STANDBY:
 			{
 				BSP_STANDBY();
@@ -532,54 +858,73 @@ static void CHARGING_Thread3(void const *argument)
 				printf("default\n\r");
 				break;
 			}
-		}			
 		}
+}
+
+void OS_PreSleepProcessing(uint32_t vParameters)
+{
+	(void)vParameters;
+	
+	vParameters = 0;
+	HAL_NVIC_DisableIRQ(DMA1_Channel1_IRQn);
+	if(status_pack==STATUS_STANDBY)
+	{
+		
+		HAL_PWREx_EnterSTOP1Mode(PWR_STOPENTRY_WFI);
+		//HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
 	}
+	else
+		/* Enter Sleep Mode , wake up is done once jumper is put between PA.12 (Arduino D2) and GND */
+    HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
 }
 
-int fputc(int ch, FILE *f)
+void OS_PostSleepProcessing(uint32_t vParameters)
 {
-	UartHandle.Instance->TDR = ((uint8_t)ch & (uint16_t)0x01FF);
-	while (!(UartHandle.Instance->ISR	& USART_ISR_TXE));
-	return (ch);
+	(void)vParameters;
+	if(status_pack==STATUS_STANDBY)
+	{
+		SYSCLKConfig_STOP();
+		
+	}
+	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
-int fgetc(FILE *f)
+/**
+  * @brief  Configures system clock after wake-up from STOP: enable MSI, PLL
+  *         and select PLL as system clock source.
+  * @param  None
+  * @retval None
+  */
+static void SYSCLKConfig_STOP(void)
 {
-	uint16_t uhMask;
-	
-	UART_WaitOnFlagUntilTimeout(&UartHandle,USART_ISR_RXNE,RESET,0,10);
-	
-	UART_MASK_COMPUTATION(&UartHandle);
-  
-	uhMask = UartHandle.Mask;
-	return (int)(UartHandle.Instance->RDR & uhMask);
-}
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  uint32_t pFLatency = 0;
 
-PACK_STATUS get_pack_status(PACK_INFO *ptr)
-{
-	PACK_STATUS status;
-	if((ptr->ATTACH==0)&&	(ptr->USB==0)&&(ptr->DCIN==0))
-		status=STATUS_STANDBY;
-	else if((ptr->ATTACH==0)&&	(ptr->USB==1))
-		status=STATUS_USB2PACK;
-	else if((ptr->ATTACH==1)&&	(ptr->USB==1)&&(ptr->PHONE_USB==1))
-		status=STATUS_USB2PACK;
-	else if((ptr->ATTACH==1)&&	(ptr->USB==1)&&(ptr->PHONE_USB==0)&&(ptr->PHONE_SOC>=90))
-		status=STATUS_USB2BOTH;
-	else if((ptr->ATTACH==1)&&	(ptr->USB==1)&&(ptr->DCIN==0)&&(ptr->PHONE_USB==0)&&(ptr->PHONE_SOC<90))
-		status=STATUS_USB2PHONE;
-	else if((ptr->ATTACH==0)&&	(ptr->USB==1)&&(ptr->DCIN==1))
-		status=STATUS_DCIN2PACK;
-	else if((ptr->ATTACH==1)&&	(ptr->USB==0)&&(ptr->DCIN==1)&&(ptr->PHONE_USB==0)&&(ptr->PHONE_SOC>=90))
-		status=STATUS_DCIN2BOTH;
-	else if((ptr->ATTACH==1)&&	(ptr->USB==0)&&(ptr->DCIN==1)&&(ptr->PHONE_USB==0)&&(ptr->PHONE_SOC<90))
-		status=STATUS_DCIN2PHONE;
-	else if((ptr->ATTACH==1)&&	(ptr->USB==0)&&(ptr->DCIN==0)&&(ptr->PHONE_USB==0)&&(ptr->PACK_SOC>2))
-		status=STATUS_BOOST2PHONE;
-	else if((ptr->ATTACH==1)&&	(ptr->USB==0)&&(ptr->DCIN==0)&&(ptr->PHONE_USB==1)&&(ptr->PHONE_SOC>90))
-		status=STATUS_PHONE2PACK;
-	return status;
+  /* Enable Power Control clock */
+  __HAL_RCC_PWR_CLK_ENABLE();
+
+  /* Get the Oscillators configuration according to the internal RCC registers */
+  HAL_RCC_GetOscConfig(&RCC_OscInitStruct);
+
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    while(1);
+  }
+
+  /* Get the Clocks configuration according to the internal RCC registers */
+  HAL_RCC_GetClockConfig(&RCC_ClkInitStruct, &pFLatency);
+
+  /* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2
+     clocks dividers */
+  RCC_ClkInitStruct.ClockType     = RCC_CLOCKTYPE_SYSCLK;
+  RCC_ClkInitStruct.SYSCLKSource  = RCC_SYSCLKSOURCE_PLLCLK;
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, pFLatency) != HAL_OK)
+  {
+    while(1);
+  }
 }
 
 #ifdef  USE_FULL_ASSERT

@@ -1,8 +1,9 @@
 /**
   ******************************************************************************
-  * @file    GPIO/GPIO_IOToggle/Inc/main.h
+  * @file    PWR/PWR_ModesSelection/Src/sleep_range1_test.c
   * @author  MCD Application Team
-  * @brief   Header for main.c module
+  * @brief   This sample code shows how to use STM32L4xx PWR HAL API to enter
+  *          power modes.
   ******************************************************************************
   * @attention
   *
@@ -33,47 +34,65 @@
   ******************************************************************************
   */
 
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __MAIN_H
-#define __MAIN_H
-
 /* Includes ------------------------------------------------------------------*/
-#include "stm32l4xx_hal.h"
-//#include "p9221.h"
-#include "smb1381.h"
-#include "power_pack.h"
+#include "main.h"
+#include <stdio.h>
 
-#include "FreeRTOS.h"
-#include "task.h"
-#include "timers.h"
-#include "queue.h"
-#include "semphr.h"
-#include "event_groups.h"
+/** @addtogroup STM32L4xx_HAL_Examples
+  * @{
+  */
+
+/** @addtogroup PWR_ModesSelection
+  * @{
+  */
+
+/* Private typedef -----------------------------------------------------------*/
+/* Private define ------------------------------------------------------------*/
+/* Private macro -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
+/* Private functions ---------------------------------------------------------*/
 
 
-#define __PACK_BSP_VERSION_MAIN   (0x01) /*!< [31:24] main version */
-#define __PACK_BSP_VERSION_SUB   	(0x00) /*!< [23:16] sub1 version */
+void test_sleep_range1_80mhz(void)
+  {
+  printf("\n\r Executing test (SLEEP Range 1, 80MHz - with FLASH ART ON) \n\r");
+  printf(" Please measure current then use Reset button to select another test \n\r");
 
-#define __PACK_BSP_VERSION        ((__PACK_BSP_VERSION_MAIN << 8)\
-                                                 |(__PACK_BSP_VERSION_SUB))
-                                            
-																								 
-/* Exported types ------------------------------------------------------------*/
-typedef struct
-{
-	uint8_t 	ATTACH;
-	uint8_t 	USB;
-	uint8_t 	DCIN;
-	uint8_t		PHONE_USB;
-	uint8_t 	PHONE_SOC;
-	uint8_t 	PACK_SOC;
-	uint16_t	PHONE_USB_VOLTAGE;
-}PACK_INFO;
+  /* Set all GPIO in analog state to reduce power consumption */
+  GPIO_AnalogState_Config();
+  
+  /* Set System clock to 80 MHz (MSI) */
+  SystemClock_80MHz();
+  
+  /* Suspend Tick increment to prevent wakeup by Systick interrupt.         */
+  /* Otherwise the Systick interrupt will wake up the device within 1ms     */
+  /* (HAL time base).                                                       */
+  HAL_SuspendTick();
 
-/* Exported constants --------------------------------------------------------*/
-/* Exported macro ------------------------------------------------------------*/
-/* Exported functions ------------------------------------------------------- */
+  /* Switch off all clock enable ... */
+  RCC->AHB1SMENR = 0x0; 
+  RCC->AHB2SMENR = 0x0;
+  RCC->AHB3SMENR = 0x0;
+  RCC->APB1SMENR1 = 0x0;
+  RCC->APB1SMENR2 = 0x0; 
+  RCC->APB2SMENR = 0x0;
+  
+  /* Enable Power Clock */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  
+  /* Enter SLEEP Mode, Main regulator is ON */  
+  HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
+  
+}
 
-#endif /* __MAIN_H */
+
+/**
+  * @}
+  */
+
+/**
+  * @}
+  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -203,7 +203,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart)
 
   /*##-3- Configure the NVIC for UART ########################################*/
   /* NVIC for USART */
-  HAL_NVIC_SetPriority(BSP_UART3_IRQn, 2, 0);
+  HAL_NVIC_SetPriority(BSP_UART3_IRQn, 13, 0);
   HAL_NVIC_EnableIRQ(BSP_UART3_IRQn);
   }
 }
@@ -285,7 +285,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 
   /* NVIC configuration for DMA Input data interrupt */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0x0E,0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+ // HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
 /**
