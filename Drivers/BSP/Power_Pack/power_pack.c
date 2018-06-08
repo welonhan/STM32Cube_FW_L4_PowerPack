@@ -539,14 +539,15 @@ void BSP_SMB_STAT_IRQHandler_Config(void)
 	SMB_STAT_PIN_CLK_ENABLE() ;
 	  
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;  
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;  
 	
 	GPIO_InitStruct.Pin = SMB_STAT_PIN;
   HAL_GPIO_Init(SMB_STAT_PIN_GPIO_PORT, &GPIO_InitStruct);	 
   
-  //HAL_NVIC_SetPriority((IRQn_Type)EXTI1_IRQn, 4 ,0);
-	//HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI1_IRQn));
+  HAL_NVIC_SetPriority((IRQn_Type)EXTI1_IRQn, 10 ,0);
+	HAL_NVIC_EnableIRQ((IRQn_Type)(EXTI1_IRQn));
 }
+
 void BSP_SMB_SYSOK_IRQHandler_Config(void)
 {
 	GPIO_InitTypeDef  GPIO_InitStruct;

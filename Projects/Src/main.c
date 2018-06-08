@@ -49,10 +49,10 @@
   #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
 #endif /* __GNUC__ */
 
-#define RXCOMMANDSIZE   0x20
-#define RXBUFFERSIZE   0x20
-#define LR_ASCII_VALUE ((uint8_t)0x0A)
-#define CR_ASCII_VALUE ((uint8_t)0x0D)
+#define RXCOMMANDSIZE   	0x20
+#define RXBUFFERSIZE   		0x20
+#define LR_ASCII_VALUE 		((uint8_t)0x0A)
+#define CR_ASCII_VALUE 		((uint8_t)0x0D)
 #define SPACE_ASCII_VALUE ((uint8_t)0x20)
 
 //#define __UART_FIXED_CMD_LENGTH
@@ -67,12 +67,6 @@ char * s;
 __IO uint8_t RxDataNumber=0; 
 __IO uint16_t RxData1=0;
 __IO uint16_t RxData2=0;
-
-__IO uint8_t ReceiveStatus = 0;
-__IO uint16_t RxCmdCounter = 0;
-__IO uint8_t ReadyToReception = 0;
-__IO uint8_t CmdEnteredOk  = 0;
-__IO uint8_t uart3_packet_end =0;
 
 //#define I2C_TIMING      0x0020098E
 
@@ -159,6 +153,7 @@ void pbphsoc(uint8_t soc);
 void pbusb(uint16_t usb_vol);
 void pbwr(uint16_t addr, uint16_t data);
 void pbrd(uint16_t addr);
+void pbhelp(void);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -314,22 +309,13 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
   */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
-  ReadyToReception = 1;
-	/* Set transmission flag: transfer complete */
+  /* Set transmission flag: transfer complete */
 	static portBASE_TYPE xHigherPriorityTaskWoken=pdFALSE;
 	
   //UartReady = SET; 
 	if((xSemaphoreGiveFromISR( xSemaphore_uart3_int, &xHigherPriorityTaskWoken))!=pdPASS)
 		printf("UART IRQ error\n\r");	
-	ReceiveStatus=1;
-	/*
-	if(((UartHandle->Instance->ISR) &( (uint32_t)(USART_ISR_RTOF)))!=0)
-	{	
-		ReceiveStatus=1;
-		//CLEAR_BIT(UartHandle->Instance->CR1, (USART_CR1_IDLEIE));
-		SET_BIT(UartHandle->Instance->ICR, (USART_ICR_RTOCF));
-	}
-	*/
+	
 }
 
 
@@ -341,6 +327,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   portBASE_TYPE xStatus;
+	uint8_t temp;
 	static portBASE_TYPE *xHigherPriorityTaskWoken=pdFALSE;
 	
 	if (GPIO_Pin == SMB_CC_STS_PIN)
@@ -352,7 +339,18 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   else if (GPIO_Pin == SMB_STAT_PIN)
   {
     /* Toggle LED2 */
-    BSP_LED_Toggle(LED2);
+    printf("USB plug in!\n\r");	
+		
+		temp=BSP_I2C2_Read(SMB_ADDRESS, 0x1310,I2C_MEMADD_SIZE_16BIT);
+		if(temp&0x10)
+		{	
+			//printf("USB plug in!\n\r");	
+			temp=BSP_I2C2_Read(SMB_ADDRESS, 0x1314,I2C_MEMADD_SIZE_16BIT);
+			temp=temp|0x10;
+			if((BSP_I2C2_Write(SMB_ADDRESS, 0x1314, I2C_MEMADD_SIZE_16BIT, temp))!=HAL_OK)
+				printf("clear USB PLUGIN INT latched error!\n\r");	
+		}
+		
   }
 
   else if (GPIO_Pin == SMB_SYS_PIN)
@@ -418,60 +416,41 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 static void UART3_task1(void const *argument)
 {
 	(void) argument;
-  
+  uint8_t i;
 	portBASE_TYPE xStatus;
 	uint16_t xTicksToWait=100 / portTICK_RATE_MS;
 	xSemaphore_uart3_int = xSemaphoreCreateBinary( );
 	if(xSemaphore_uart3_int==NULL)
 			printf("xSemaphore create fail\n\r");
 	for(;;)
-	{
-		//while (CmdEnteredOk != 0x1) 
-		//{
-			ReceiveStatus = 0;
+	{			
 			SET_BIT(UartHandle.Instance->CR2, USART_CR2_RTOEN);	//receiver timeout enable
 			SET_BIT(UartHandle.Instance->CR1, USART_CR1_RTOIE);	//receiver timeout interrupt enable
-			UartHandle.Instance->RTOR=0x00000016;							//22x bit duration
-			while (ReceiveStatus != 0x1)
-			{
-				//CLEAR_BIT(UartHandle.Instance->CR1, USART_CR1_TE);
-				//SET_BIT(UartHandle.Instance->ICR, (USART_ICR_IDLECF));
-				/* Start the USART2 Receive process to receive the RxBuffer */
-				if(HAL_UART_Receive_IT(&UartHandle, RxBuffer, RXBUFFERSIZE) != HAL_OK)
-				{
-					 printf("uart int error\n\r");
-				}
-				xSemaphoreTake( xSemaphore_uart3_int, portMAX_DELAY );	
-				//RxCommand[RxCmdCounter] = (char) RxBuffer[0];
-				//RxCmdCounter++;	
-/*			
-				if(RxCmdCounter==1)
-				{
-					SET_BIT(UartHandle.Instance->CR2, USART_CR2_RTOEN);	//receiver timeout enable
-					SET_BIT(UartHandle.Instance->CR1, USART_CR1_RTOIE);	//receiver timeout interrupt enable
-					UartHandle.Instance->RTOR=0x00000016;							//22x bit duration
-				}
-*/				
-			}
-			//SET_BIT(UartHandle.Instance->CR1, USART_CR1_TE);
-			DecodeReception();
-		  //CmdEnteredOk = 1;
+			UartHandle.Instance->RTOR=0x00000016;								//22x bit duration
+			
+			for(i=0;i<RXBUFFERSIZE;i++)
+				*(RxBuffer+i)=0;
+			if(HAL_UART_Receive_IT(&UartHandle, RxBuffer, RXBUFFERSIZE) != HAL_OK)
+				 printf("uart int error\n\r");
+			xSemaphoreTake( xSemaphore_uart3_int, portMAX_DELAY );	
+		
+			DecodeReception();		  
       s = PbCommand;
       
       if (strcmp(s, "pbfw") == 0){pbfw();}
       else if (strcmp(s, "pbsoc") == 0) {pbsoc(RxData1);}
       else if (strcmp(s, "pbphsoc") == 0) {pbphsoc(RxData1);}
       else if (strcmp(s, "pbusb") == 0) {pbusb(RxData1);}
-      else if (strcmp(s, "pbwr") == 0) {pbwr(RxData1,RxData2);}
-      else if (strcmp(s, "pbrd") == 0) {pbrd(RxData1);}
+      else if (strcmp(s, "pbwrsmb") == 0) {pbwr(RxData1,RxData2);}
+      else if (strcmp(s, "pbrdsmb") == 0) {pbrd(RxData1);}
+			else if (strcmp(s, "help") == 0) {pbhelp();}
       else {
          printf("Invalid command.. Please enter again\n\r");
-         CmdEnteredOk = 0;
+         
          /* Reset received test number array */
          memset(RxCommand, 0, RXCOMMANDSIZE);
        }
-    }
-	//}
+    }	
 }
 #else	
 static void UART3_task1(void const *argument)
@@ -681,6 +660,19 @@ void DecodeReception(void)
 	}
 	printf("\n\r");
 
+}
+
+void pbhelp(void)
+{
+	printf("****************Power Bank Command*****************\n\r");
+	printf("pbfw		--PB firmware version\n\r");
+	printf("pbsoc		--PB battery soc\n\r");
+	printf("pbphsoc		--Phone battery soc\n\r");
+	printf("pbusb xx		--Phone USB voltage\n\r");
+	printf("pbwrsmb addr data	--I2C write SMB registor\n\r");
+	printf("pbrdsmb addr	--I2C read SMB registor\n\r");
+	printf("help		--help\n\r");
+	printf("***************************************************\n\r");
 }
 
 void pbfw(void)

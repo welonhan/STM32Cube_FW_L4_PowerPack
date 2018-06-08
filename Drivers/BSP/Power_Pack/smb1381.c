@@ -40,7 +40,16 @@ void BSP_SMB_Init(void)
 	//float voltage 4.35V
 	if((BSP_I2C2_Write(SMB_ADDRESS, 0x1070, I2C_MEMADD_SIZE_16BIT, 0xB4))!=HAL_OK)
 		printf("SBM1381 float voltage setting error!\n\r");
+	
+	//SMB STAT INT polarity low, 1=level low or falling edge
+	if((BSP_I2C2_Write(SMB_ADDRESS, 0x1313, I2C_MEMADD_SIZE_16BIT, 0xFF))!=HAL_OK)
+		printf("SBM1381 INT polarity setting error!\n\r");
+	
+	if((BSP_I2C2_Write(SMB_ADDRESS, 0x1315, I2C_MEMADD_SIZE_16BIT, 0xFF))!=HAL_OK)
+		printf("SBM1381 INT enable setting error!\n\r");	
+	
 }
+
 
 HAL_StatusTypeDef smblib_masked_write(uint16_t reg, uint8_t bits, uint8_t data)
 {

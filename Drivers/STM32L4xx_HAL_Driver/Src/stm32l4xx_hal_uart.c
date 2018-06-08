@@ -3223,9 +3223,12 @@ static void UART_RxISR_8BIT(UART_HandleTypeDef *huart)
   /* Check that a Rx process is ongoing */
   if(huart->RxState == HAL_UART_STATE_BUSY_RX)
   {
-    uhdata = (uint16_t) READ_REG(huart->Instance->RDR);
-    *huart->pRxBuffPtr++ = (uint8_t)(uhdata & (uint8_t)uhMask);
-    
+    if((((huart->Instance->ISR) &( (uint32_t)(USART_ISR_RXNE)))!=0))
+		{
+			uhdata = (uint16_t) READ_REG(huart->Instance->RDR);
+			*huart->pRxBuffPtr++ = (uint8_t)(uhdata & (uint8_t)uhMask);
+    }
+		
     if(--huart->RxXferCount == 0)
     {
       /* Disable the UART Parity Error Interrupt and RXNE interrupt*/
@@ -3247,9 +3250,12 @@ static void UART_RxISR_8BIT(UART_HandleTypeDef *huart)
       
       HAL_UART_RxCpltCallback(huart);
     }
-		if((((huart->Instance->ISR) &( (uint32_t)(USART_ISR_RTOF)))!=0))
+		
+		if((((huart->Instance->ISR) &( (uint32_t)(USART_ISR_RTOF)))!=0))		//han clear receiver time out int flag, and add CR_ASCII_VALUE at the end of the buffer
     {
-      /* Disable the UART Parity Error Interrupt and RXNE interrupt*/
+      *huart->pRxBuffPtr++ =0x0D	;			//CR_ASCII_VALUE 		((uint8_t)0x0D);
+			*huart->pRxBuffPtr++ =0x0A	;			//LF_ASCII_VALUE 		((uint8_t)0x0A);
+			/* Disable the UART Parity Error Interrupt and RXNE interrupt*/
 #if defined(USART_CR1_FIFOEN)
       CLEAR_BIT(huart->Instance->CR1, (USART_CR1_RXNEIE_RXFNEIE | USART_CR1_PEIE));
 #else
